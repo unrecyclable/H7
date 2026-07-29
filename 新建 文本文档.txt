@@ -1,0 +1,96 @@
+#include "serial.h"
+#include "stdlib.h"
+#include "string.h"
+#include "pwm.h"
+serial_Msg_t uart1_msg;
+	uint8_t serial_rx_buffer[serial_rx_buffer_size];
+	int uart1_it_flag=0;
+void data_swap(void*data,int len,int width)
+{
+	uint8_t*p=data;
+	for(int i=0;i<len/width;i++)
+	{
+		for(int j=0;j<width/2;j++)
+		{
+			int temp=p[i*width+j];
+			p[i*width+j]=p[i*width+width-j-1];
+			p[i*width+width-j-1]=temp;
+		}
+	}
+	
+}
+void serial_init()
+{
+	MX_USART1_UART_Init();
+	// 启动DMA接收
+    HAL_UART_Receive_DMA(&huart1, serial_rx_buffer, serial_rx_buffer_size);
+    // 使能空闲中断
+    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+}
+
+
+void UART1_IT(void)
+{
+    // 空闲检测
+    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE))
+    {
+        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+        // 停 DMA，算长度
+        HAL_UART_DMAStop(&huart1);
+        uint16_t len = serial_rx_buffer_size - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
+
+       if(uart1_it_flag==0)
+			 {uart1_msg.len = len;
+        memcpy(uart1_msg.data, serial_rx_buffer, len);
+				 uart1_it_flag=1;
+			 }
+			//serial_parse_data(uart1_msg.data,len);
+			    //data_swap(pwm,20,2);
+			//set_motor_pwm(pwm);
+        // 重启 DMA
+      HAL_UART_Receive_DMA(&huart1, serial_rx_buffer, serial_rx_buffer_size);
+    }
+}
+void serial_parse_data(uint8_t*data,int len)
+{
+	int bufferp=0;
+		int datap=0;
+	int flag=0;
+	uint8_t ch=0;
+uint8_t*pwm8=(uint8_t*)pwm;
+	while(bufferp<len)
+	{
+		ch=data[bufferp];
+		switch(flag)
+		{
+			case 0:
+			if(ch==0xfe)
+				flag=1;
+			break;
+			case 1:
+				if(ch==0x01)
+					flag=2;
+				break;
+			case 2:
+				pwm8[datap]=data[bufferp];
+				datap++;
+				if(datap>=20)
+					flag=3;
+				break;
+			
+			default:
+				break;
+				
+		}
+		bufferp++;
+		if(flag==3)
+			break;
+		
+		}
+	if(datap<16)
+	{
+		
+	}
+	
+}
+	

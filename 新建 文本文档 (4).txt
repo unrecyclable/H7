@@ -1,0 +1,2060 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include "cmsis_os.h"
+#include "dma.h"
+#include "fdcan.h"
+#include "i2c.h"
+#include "memorymap.h"
+#include "spi.h"
+#include "tim.h"
+#include "usart.h"
+#include "gpio.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include "sona.h"
+#include "bme280.h"
+#include "jy901.h"
+#include "ms5837_uart.h"
+#include "filter.h"
+#include "FreeRTOS.h"
+#include "task.h" 
+#include <string.h>
+#include "iic.h"
+#include "serial.h"
+#include "connection.h"
+#include "sona.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
+static void MPU_Config(void);
+void MX_FREERTOS_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+int fputc(int ch,FILE*f)
+{
+  HAL_UART_Transmit(&huart1,(uint8_t*)&ch,1,0xff);
+  return ch;
+}
+int fgetc(FILE *f) 
+{
+  char ch;
+  HAL_UART_Receive(&huart1,(uint8_t*)&ch,1,0xff);
+  return((int)ch);
+}
+int range(int data,int min,int max)
+{
+if(data>max)
+	return max;
+else if(data<min)
+	return min;
+else
+	return data;
+}
+/*
+int spi_reg_write(uint8_t reg,uint8_t*data,int len)
+{
+	int res;
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_RESET);
+	if (HAL_SPI_Transmit(&hspi1,&reg,1,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	if (HAL_SPI_Transmit(&hspi1,data,len,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_SET);
+return 	res;
+}
+int spi_reg_receive(uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_RESET);
+	volatile int error;
+	error=HAL_SPI_Transmit(&hspi1,&reg,1,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+	error=HAL_SPI_Receive(&hspi1,data,len,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_SET);
+	return res;
+}
+*/
+
+
+int spi_reg_write(uint8_t reg,uint8_t*data,int len)
+{
+	int res;
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_RESET);
+	if (HAL_SPI_Transmit(&hspi1,&reg,1,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	if (HAL_SPI_Transmit(&hspi1,data,len,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_SET);
+	return 	res;
+}
+
+int spi_reg_receive(uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_RESET);
+	volatile int error;
+	error=HAL_SPI_Transmit(&hspi1,&reg,1,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+	error=HAL_SPI_Receive(&hspi1,data,len,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_2,GPIO_PIN_SET);
+	return res;
+}
+
+
+int spi4_reg_write(uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+	reg=(~(1<<7))&reg;
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_4,GPIO_PIN_RESET);
+	if (HAL_SPI_Transmit(&hspi4,&reg,1,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	if (HAL_SPI_Transmit(&hspi4,data,len,0xff) != HAL_OK)
+  {
+   res=HAL_ERROR;
+  }
+	HAL_GPIO_WritePin(GPIOG,GPIO_PIN_4,GPIO_PIN_SET);
+	return 	res;
+}
+int spi4_reg_receive(uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+	reg=1<<7|reg;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_4,GPIO_PIN_RESET);
+	volatile int error;
+	error=HAL_SPI_Transmit(&hspi4,&reg,1,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+	error=HAL_SPI_Receive(&hspi4,data,len,0xff);
+if(error!=HAL_OK)
+	res=HAL_ERROR;
+HAL_GPIO_WritePin(GPIOG,GPIO_PIN_4,GPIO_PIN_SET);
+	return res;
+}
+
+int i2c4_reg_write(uint8_t addr,uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+res=HAL_I2C_Mem_Write(&hi2c4,addr<<1,reg,I2C_MEMADD_SIZE_8BIT,data,1,0xff);
+	return res;
+}
+int i2c4_reg_receive(uint8_t addr,uint8_t reg,uint8_t*data,int len)
+{
+	int res=0;
+	
+	if(HAL_I2C_Master_Transmit(&hi2c4,addr<<1,&reg,1,0xff)!=HAL_OK)
+		res=HAL_ERROR;
+	if(HAL_I2C_Master_Receive(&hi2c4,addr<<1,data,len,0xff)!=HAL_OK)
+		res=HAL_ERROR;
+	return res;
+}
+
+
+
+
+
+
+
+//#define uart2_buffer_size 255
+//uint8_t uart2_rx_buffer[uart2_buffer_size]={0};
+//void UART2_IT(void)
+//{
+//    // ????
+//    if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE))
+//    {
+//        __HAL_UART_CLEAR_IDLEFLAG(&huart2);
+//        // ? DMA,???
+//        HAL_UART_DMAStop(&huart2);
+//        uint16_t len = uart2_buffer_size- __HAL_DMA_GET_COUNTER(huart2.hdmarx);
+//				//if(len==7||len==8)
+////				char str[20];
+////				sprintf(str,"2\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			for(int i=0;i<8;i++)
+////			{
+////			sprintf(str,"%x,",uart2_rx_buffer[i]);
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			}
+////			sprintf(str,"\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+//			printf("2\n");
+//			for(int i=0;i<8;i++)
+//			{
+//			printf("%x,",uart2_rx_buffer[i]);
+//			}
+//			printf("\n");
+//      
+//      HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer, uart2_buffer_size);
+//    }
+//}
+
+//#define uart4_buffer_size 255
+//uint8_t uart4_rx_buffer[uart4_buffer_size]={0};
+//void UART4_IT(void)
+//{
+//    // ????
+//    if (__HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE))
+//    {
+//        __HAL_UART_CLEAR_IDLEFLAG(&huart4);
+//        // ? DMA,???
+//        HAL_UART_DMAStop(&huart4);
+//        uint16_t len = uart4_buffer_size- __HAL_DMA_GET_COUNTER(huart4.hdmarx);
+
+////				char str[20];
+////				sprintf(str,"4\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			for(int i=0;i<8;i++)
+////			{
+////			sprintf(str,"%x,",uart4_rx_buffer[i]);
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			}
+////			sprintf(str,"\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+//			printf("4\n");
+//			for(int i=0;i<8;i++)
+//			{
+//			printf("%x,",uart4_rx_buffer[i]);
+//			}
+//			printf("\n");
+//      
+//      HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer, uart4_buffer_size);
+//    }
+//		
+//}
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//	if(huart->Instance==USART2)
+//	{
+//		uint8_t data[6];
+//		for (int i=0;i<6;i++)
+//		{
+//			data[i]=uart2_rx_buffer[i];
+//		}
+
+//	}
+//	if(huart->Instance==UART4)
+//	{
+//		uint8_t data[6];
+//		for (int i=0;i<6;i++)
+//		{
+//			data[i]=uart4_rx_buffer[i];
+//		}
+//	}
+//}
+
+
+
+
+uint8_t uart8_rx_buffer[64]={0};
+int uart8_rx_flag=0;
+uint8_t rc_buffer[64];
+int uart8_msg_len=0;
+uint8_t uart7_rx_buffer[64]={0};
+int uart7_flag=0;
+void uart7_parse(uint8_t*data)
+{
+	if(data[0]==0xfa)
+	{
+		if(data[1]==0x11)
+		{
+			uart7_flag=1;
+		}
+	}
+}
+
+uint8_t uart7_msg[64];
+void UART7_IT()
+{
+	
+	if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_IDLE))
+    {
+        __HAL_UART_CLEAR_IDLEFLAG(&huart7);
+			
+        HAL_UART_DMAStop(&huart7);
+			
+        volatile uint16_t len = 64- __HAL_DMA_GET_COUNTER(huart7.hdmarx);
+      if(uart7_flag==0)
+			{
+				
+				memcpy(uart7_msg,uart7_rx_buffer,len);
+				uart7_flag=1;
+				
+			}
+				
+      HAL_UART_Receive_DMA(&huart7, uart7_rx_buffer, 64);
+    }
+		
+	
+}
+
+
+
+void UART8_IT()
+{
+	
+	if (__HAL_UART_GET_FLAG(&huart8, UART_FLAG_IDLE))
+    {
+        __HAL_UART_CLEAR_IDLEFLAG(&huart8);
+			
+        HAL_UART_DMAStop(&huart8);
+			
+       volatile uint16_t len;
+
+len=64- __HAL_DMA_GET_COUNTER(huart8.hdmarx);
+				
+			
+			if(uart8_rx_flag==0&&len>2)
+      //if(uart8_rx_flag==0&&len>=2&&len<=4)
+			{
+				
+				memcpy(rc_buffer,uart8_rx_buffer,len);
+				uart8_msg_len=len;
+				uart8_rx_flag=1;
+			}
+//			if(len<=2)
+//			{
+//				if(uart8_rx_buffer[0]==0xac)
+//				{
+//				if(uart8_rx_buffer[1]==0xbc)
+//				{
+//				xEventGroupSetBitsFromISR(xEventGroup1, 0x04, NULL);
+//				}
+//				}
+//				if(uart8_rx_buffer[0]==0xfa)
+//				{if(uart8_rx_buffer[1]==0x01)
+//					{
+//					}
+//				}
+//			
+//			}
+			for(int i=0;i<64;i++)
+			{
+			uart8_rx_buffer[i]=0;
+			}
+			__HAL_UART_ENABLE_IT(&huart8, UART_IT_IDLE);
+      HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer,64);
+    }
+}
+int arm_flag=0;
+int rot_flag=0;
+int move_flag=6,light_flag=2,y_flag=4,cam_flag=0;
+int move_gain=0,y_gain=0; 
+int cali_flag=0;
+	uint16_t pwm[10];
+float roll_gain=0,pitch_gain=0,yaw_gain=0;
+float rkp=1;
+float rki=0;
+float rkd=0;
+float ri=0;
+float rd=0;
+
+float pkp=1;
+float pki=0;
+float pkd=0;
+float pi=0;
+float pd=0;
+
+typedef struct{
+	float kp;
+	float ki;
+	float kd;
+	float last;
+	float integrate;
+}PID;
+
+PID rpid={.kp=5,.ki=0.01,.kd=0,.last=0}; //3 0.001
+PID ppid={.kp=5,.ki=0.01,.kd=0,.last=0}; //3 0.001
+PID rvpid={.kp=1,.ki=0.001,.kd=0,.last=0}; //5 0.001
+PID pvpid={.kp=1,.ki=0.001,.kd=0,.last=0}; //5 0.001
+PID ypid={.kp=5,.ki=0.01,.kd=0,.last=0}; //d=5  d=2 d=4
+PID yvpid={.kp=1,.ki=0,.kd=0,.last=0};// 1 0.001 //5 0.001
+PID apid={.kp=5,.ki=0,.kd=0,.last=0};
+//PID ypid={.kp=10,.ki=0,.kd=0,.last=0};
+//PID yvpid={.kp=1,.ki=0,.kd=0,.last=0};
+//PID dpid={.kp=100,.ki=10,.kd=1,.last=0};
+PID dpid={.kp=10,.ki=0.1,.kd=0,.last=0};//5 0.001 0
+PID dvpid={.kp=5,.ki=0.001,.kd=0,.last=0};
+float pid_control(PID*pid,float delta)
+{
+	float out;
+	pid->integrate+=delta;
+	
+	//if(pid->integrate>=50)
+	//{
+		//dpid->integrate=50;
+	//}
+	if(fabs(pid->integrate)<0.01)
+		pid->integrate=0;
+	if(pid->last*delta<0)
+	{
+		pid->integrate=0;
+	}
+	//6.5 add
+	if(delta==0)
+	{
+	pid->integrate=0;
+	}
+	//
+	out=delta*pid->kp+(delta-pid->last)*pid->kd+pid->ki*pid->integrate;
+	//printf("%f,%f,%f\n",delta*pid->kp,pid->ki*pid->integrate,(delta-pid->last)*pid->kd);
+	pid->last=delta;
+	//if(out>50)
+		//out=50;
+	//else if(out<-50)
+		//out=-50;
+	return out;
+	
+	
+}
+
+
+
+
+int motion[6][4]={{1,1,-1,-1},{-1,-1,1,1},{-1,1,1,-1},{1,-1,-1,1},{-1,1,-1,1},{1,-1,1,-1}};  
+	//        0   1    2    3    4       5
+			//forwaed back left right counterclockwise clockwise	//????? ?? ?? ?? ??? ???
+//int updown[4][4]={{1,1,1,1},{-1,-1,-1,-1},{1,1,-1,-1},{-1,-1,1,1}};//up down counterclockwise clockwise
+int updown[4][4]={{-1,-1,-1,-1},{1,1,1,1},{1,-1,-1,1},{-1,1,1,-1}};//up down counterclockwise clockwise
+
+int max_gain=250;//250 150
+float angle_loop(float angle)
+{
+	if(angle>180)
+		angle-=360;
+	else if(angle<-180)
+		angle+=360;
+	return angle;
+	
+}
+float zero_roll=-4.4;
+float zero_pitch=2.5;
+float target_roll=0;
+float target_pitch=0;
+
+	void stable()
+{
+	
+	target_roll=zero_roll;
+	target_pitch=zero_pitch;
+	float r_delta,p_delta;
+	r_delta=target_roll-angle_loop(roll);//range -180-180
+	p_delta=target_pitch-angle_loop(pitch);
+	if(r_delta>180)
+		r_delta-=360;
+	if(r_delta<-180)
+		r_delta+=360;
+	if(p_delta>180)
+		p_delta-=360;
+	if(p_delta<-180)
+		p_delta+=360;
+	if(fabs(roll)<=1)
+	{
+		r_delta=0;
+	}
+	if(fabs(pitch)<=1)
+	{
+		p_delta=0;
+	}
+
+	//float xv,yv;
+	//xv=pid_control(&rvpid,r_delta);
+	//yv=pid_control(&pvpid,p_delta);
+	//pitch_gain=pid_control(&ppid,xv-angx);
+	//roll_gain=pid_control(&rpid,yv+angy);
+	roll_gain=pid_control(&rpid,r_delta);
+	pitch_gain=pid_control(&ppid,p_delta);
+	
+	//roll_gain=range(roll_gain,-150,150);
+	//pitch_gain=range(pitch_gain,-150,150);
+				//char str[20];
+		//sprintf(str,"roll=%f\npitch=%f\n",roll,pitch);
+		//HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+	//for(int i=0;i<4;i++)
+		//pwm[i+4]=1500;
+	
+		pwm[4]-=roll_gain;
+		pwm[5]+=roll_gain;
+		pwm[6]+=roll_gain;
+		pwm[7]-=roll_gain;
+
+	
+	
+		pwm[4]+=pitch_gain;
+		pwm[5]+=pitch_gain;
+		pwm[6]-=pitch_gain;
+		pwm[7]-=pitch_gain;
+//		
+//		printf("stable\n");
+//for(int i=0;i<8;i++)
+//				{
+//				//msg[i+1]=pwm[i];
+//					printf("%d,",pwm[i]);
+//				}
+//				
+//				printf("\n");
+
+
+	//printf("%f,%f\n",roll_gain,pitch_gain);
+	//printf("%f,%f,%f\n",roll,pitch,yaw);
+	//printf("%x\n",pwm[4]);
+	
+}
+	void roll_stable()
+{
+	
+		float y_delta,p_delta;
+	y_delta=-angle_loop(yaw);
+	p_delta=-angle_loop(pitch);
+	if(fabs(yaw)<=2)
+	{
+		y_delta=0;
+	}
+	if(fabs(pitch)<=2)
+	{
+		p_delta=0;
+	}
+	yaw_gain=pid_control(&ypid,y_delta);
+	pitch_gain=pid_control(&ppid,p_delta);	
+	
+
+		pwm[4]+=pitch_gain;
+		pwm[5]+=pitch_gain;
+		pwm[6]-=pitch_gain;
+		pwm[7]-=pitch_gain;
+	
+		pwm[0]+=yaw_gain;
+		pwm[3]-=yaw_gain;
+		pwm[2]+=yaw_gain;
+		pwm[1]-=yaw_gain;
+
+	
+	
+}
+float target_yaw=0;
+//float yaw_loop(float yaw)
+//{
+//if(yaw>180)
+//yaw-=360;
+//else if(yaw<-180)
+//	yaw+=360;
+//return yaw;
+//}
+float yaw_loop(float yaw)//range 0-360
+{
+if(yaw<0)
+yaw+=360;
+else if(yaw>360)
+	yaw-=360;
+return yaw;
+}
+
+float temp=0;
+void yaw_pid()
+{
+
+	float delta;
+	float deadzone=30;
+	//delta=yaw_loop(target_yaw)-yaw_loop(yaw); 
+	//	if(delta>180)
+//		delta-=360;
+//	if(delta<-180)
+//		delta+=360;
+	delta=target_yaw-yaw_total;
+
+if(fabs(delta)<=1)
+{
+delta=0;
+}
+
+//printf("%f,%f\n",target_yaw,yaw_total);
+//negative
+
+//yaw_gain=-pid_control(&ypid,delta);
+	//yaw_gain-=10*delta/fabs(delta)*pid_control(&ypid,delta);
+//yaw_gain=range(yaw_gain,-100,100);
+
+//two
+yaw_gain=pid_control(&ypid,delta);
+//printf("ygain=%f\n",yaw_gain);
+//	yaw_gain-=10*delta/fabs(delta)*pid_control(&ypid,delta);
+if(delta>0)
+yaw_gain=deadzone+yaw_gain;
+else if(delta<0)
+	yaw_gain=yaw_gain-deadzone;
+
+//yaw_gain=pid_control(&yvpid,temp-angz);
+//yaw_gain=pid_control(&yvpid,20-angz);
+yaw_gain=range(yaw_gain,-200,200);
+//printf("%f,%f\n",20-angz,yaw_gain);
+	//printf("%f,%f,%f,%f,%f,%f\n",yaw_loop(target_yaw),yaw_loop(yaw),delta,temp,temp-angz,yaw_gain);
+//printf("%f,%f,%f\n",roll,pitch,yaw);
+	pwm[0]-=yaw_gain;
+	pwm[3]+=yaw_gain;
+	pwm[2]-=yaw_gain;
+	pwm[1]+=yaw_gain;
+
+	
+//for(int i=0;i<4;i++)
+//{
+//pwm[i]=range(pwm[i],1400,1600);
+//}
+
+
+}
+float target_depth=0.2;
+float depth_l=0;
+float deep_gain=0;
+void deep_pid()
+{
+	float deadzone=50;
+float delta=target_depth-ms5837_depth;
+	if(fabs(delta)<=0.008)
+	{
+		delta=0;
+	}
+	//float deepv_gain=0;
+	deep_gain=50*pid_control(&dpid,delta); //+
+	//float vdelta;
+	//vdelta=deepv_gain-(ms5837_depth-depth_l)/0.02;
+	//deep_gain=10*pid_control(&dvpid,vdelta);
+	if(delta>0)
+		deep_gain+=deadzone;
+	else if(delta<0)
+		deep_gain-=deadzone;
+	
+	deep_gain=range(deep_gain,-150,150); //150
+	for(int i=0;i<4;i++)
+	{
+		//pwm[i+4]=1500;
+		pwm[i+4]+=deep_gain;
+	
+	}
+	depth_l=ms5837_depth;
+	//rintf("%f,%f,%f\n",target_depth,ms5837_depth,deep_gain);
+/*			char str[20];
+		sprintf(str,"delta=%f\n",delta);
+		HAL_UART_Transmit(&h uart8,(uint8_t*)str,strlen(str),0xff);
+			sprintf(str,"gain=%f\n",deep_gain);
+		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);*/
+	//printf("%f,%f\n",delta,deep_gain);
+
+}
+void roll_deep_pid()
+{
+}
+//void y_control(int flag)
+//{
+//	float gain=((float)y_gain/256*max_gain);
+//	float max_step=0.1;
+//	if(flag>=0&&flag<=1)
+//	{
+//		if(flag==0)
+//			target_depth+=max_step*gain;
+//		else
+//			target_depth-=max_step*gain;
+//		
+//	}
+//	
+//	else if(flag>=2&&flag<=3)
+//	{		for(int i=0;i<4;i++)
+//		{
+//			pwm[i+4]=(int)(gain*(updown[flag][i])+1500);
+//		}
+//	}
+//	else if(flag==4)
+//	{
+//		for(int i=0;i<4;i++)
+//		{
+//			pwm[i+4]=1500;
+//			y_gain=0;
+//		}
+//		
+//	}
+//	//deep_pid();
+//	//if(flag!=2&&flag!=3)
+//			//stable();
+//	
+//}
+void move(int flag) //1234 ?????,?????,???????????
+{ 
+	float gain=((float)move_gain/256*max_gain);
+	if(flag<6)
+	{		for(int i=0;i<4;i++)
+		{
+			pwm[i]=(int)(gain*(motion[flag][i])+1500);
+		}
+	}
+	else if(flag==6)
+	{
+		for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+			move_gain=0;
+		}
+	}
+
+
+		
+}
+
+int brightness=1000;
+void light(int delta,int flag)
+{
+	if(flag!=2)
+	{
+	
+	if(flag==1)
+	{
+		delta=-delta;
+	}
+	brightness+=delta;
+	}
+	
+	if (brightness<1000)
+		brightness=1000;
+	else if(brightness>1500)
+		brightness=1500;
+	pwm[8]=brightness;
+	pwm[9]=brightness;
+}
+	
+void y_control(int flag)
+{
+	int gain=(int)((double)y_gain/256*max_gain);
+	if(flag<4)
+	{		for(int i=0;i<4;i++)
+		{
+			pwm[i+4]=(int)(gain*(updown[flag][i])+1500);
+		}
+	}
+	else if(flag==4)
+	{
+		for(int i=0;i<4;i++)
+		{
+			pwm[i+4]=1500;
+			y_gain=0;
+		}
+		
+	}
+	//if(flag!=2&&flag!=3)
+			//stable();
+	
+}
+
+float angle_loop_add(float angle,float delta)
+{
+float re=angle+delta;
+	if(re>360)
+	re-=360;
+	else if(re<0)
+	re+=360;
+	return re;
+}
+
+int max_out=150;
+int max_out1=200;
+float fpos_x=-1.5,fpos_y=0;
+void set_control(int mflag,int yflag)
+{
+	float gain=(float)move_gain/256*max_gain;
+	float ygain=(float)y_gain/256*max_gain;
+	float max_yaw_step=2;
+	float max_depth_step=0.01;//0.025;
+	for(int i=0;i<4;i++)
+	{
+	pwm[i]=1500;
+	}
+	if((mflag>=0&&mflag<=3)||mflag==6)
+	{
+		if(mflag>=0&&mflag<=3)
+		{
+		for(int i=0;i<4;i++)
+		{
+			pwm[i]+=(int)(gain*motion[mflag][i]);
+//			if(mflag==0)
+//			{
+//			fpos_x+=(float)gain/255*0.5/50;
+//			}
+//			else if(mflag==1)
+//			{
+//				fpos_x-=(float)gain/255*0.5/50;
+//			}
+//			else if(mflag==2)
+//			{
+//				fpos_y-=(float)gain/255*0.5/50;
+//			}	
+//			else if(mflag==3)
+//			{fpos_y+=(float)gain/255*0.5/50;
+//			}
+		}
+		}
+		if(mflag==6)
+		{
+			for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+		}
+		}
+	}
+	else if(mflag>=4&&mflag<=5)
+	{
+			if(mflag==4)
+			//target_yaw=angle_loop_add(target_yaw,(float)move_gain/255*max_yaw_step);
+			target_yaw=target_yaw+(float)move_gain/255*max_yaw_step;
+			if(mflag==5)
+			//target_yaw=angle_loop_add(target_yaw,-(float)move_gain/255*max_yaw_step);
+			target_yaw=target_yaw-(float)move_gain/255*max_yaw_step;
+			//printf("targetyaw=%f\n",target_yaw);
+			//printf("y_delta=%f\n",(float)move_gain/256*max_yaw_step);
+	}
+	
+	else
+	{
+		/*for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+		}*/
+	}
+	
+	if(yflag>=0&&yflag<=1)
+	{
+		for(int i=0;i<4;i++)
+			pwm[i+4]=1500;
+		
+			if(yflag==0)
+			{target_depth-=(float)y_gain/255*max_depth_step;
+			if(target_depth<0.001)
+				target_depth=0.001;}
+			if(yflag==1)
+			target_depth+=(float)y_gain/255*max_depth_step;
+			//printf("target_depth=%f\n",target_depth);
+	}
+	else if(yflag>=2&&yflag<=3)
+	{
+		for(int i=0;i<4;i++)
+			pwm[i+4]=1500+(int)(ygain*updown[yflag][i]);
+	}
+	else
+	{
+	for(int i=0;i<4;i++)
+		pwm[i+4]=1500;
+	}
+	
+	//printf("%f,%f\n",target_depth,target_yaw);
+
+deep_pid();
+yaw_pid();
+	if(yflag!=2&&yflag!=3)
+		stable();
+for(int i=0;i<4;i++)
+{
+pwm[i]=range(pwm[i],1500-max_out,1500+max_out);
+}
+for(int i=4;i<8;i++)
+{
+pwm[i]=range(pwm[i],1500-max_out1,1500+max_out1);
+}
+	
+}
+void a_set_control(int mflag,int yflag)
+{
+	float gain=(float)move_gain/256*max_gain;
+	float ygain=(float)y_gain/256*max_gain;
+	float max_yaw_step=0.5;
+	float max_depth_step=0.05;
+	if((mflag>=0&&mflag<=3)||mflag==6)
+	{
+		if(mflag>=0&&mflag<=3)
+		{
+		for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+		}
+		}
+		if(mflag==6)
+		{
+			for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+		}
+		}
+	}
+	else if(mflag>=4&&mflag<=5)
+	{
+			if(mflag==4)
+			target_yaw=angle_loop_add(target_yaw,-(float)move_gain/256*max_yaw_step);
+			if(mflag==5)
+			target_yaw=angle_loop_add(target_yaw,(float)move_gain/256*max_yaw_step);
+	}
+	
+	else
+	{
+		/*for(int i=0;i<4;i++)
+		{
+			pwm[i]=1500;
+		}*/
+	}
+	
+	if(yflag>=0&&yflag<=1)
+	{
+			if(yflag==0)
+			target_depth-=(float)y_gain/256*max_depth_step;
+			if(yflag==1)
+			target_depth+=(float)y_gain/256*max_depth_step;
+			char str[30];
+	}
+	else if(yflag>=2&&yflag<=3)
+	{
+		for(int i=0;i<4;i++)
+		pwm[i+4]=1500;
+	}
+	else
+	{
+	for(int i=0;i<4;i++)
+		pwm[i+4]=1500;
+	}
+	//printf("%f,%f\n",target_depth,target_yaw);
+	//deep_pid();
+//yaw_pid();
+	//if(yflag!=2&&yflag!=3)
+		//stable();
+	
+}
+//void serial_parse_data(uint8_t*data,int len)  //0xfe 0x10 xx(0x00~0x08)//??
+//																							//0xfe 0x20 xx(0x00,0x01)//?
+//{
+//	
+//	
+//	int bufferp=0;
+//	int flag=0;
+//	uint8_t ch=0;
+//	while(bufferp<len)
+//	{
+//		ch=data[bufferp];
+//		switch(flag)
+//		{
+//			case 0:
+//			if(ch==0xfe)
+//				flag=1;
+//			break;
+//			case 1:
+//				if(ch==0x10)
+//					flag=2;
+//				else if(ch==0x20)
+//					flag=3;
+//				else if(ch==0x30)
+//					flag=4;
+//				else if(ch==0x40)
+//					flag=5;
+//				else if(ch==0x50)
+//					flag=6;
+//				else if(ch==0x60)
+//					flag=7;
+//				else if(ch==0x70)
+//					flag=8;
+//				else if(ch==0x80)
+//					flag=9;
+//				break;
+//			case 2:
+//					move_flag=ch;
+//					if(data[bufferp+1]!=0)
+//							move_gain=data[bufferp+1];
+//					flag=-1;
+//					break;
+//			case 3:
+//					light_flag=ch;
+//					flag=-1;
+//					break;
+//			case 4:
+//					y_flag=ch;
+//					if(data[bufferp+1]!=0)
+//							y_gain=data[bufferp+1];
+//					flag=-1;
+//					break;
+//			case 5:
+//					cam_flag=ch;
+//					flag=-1;
+//					break;
+//			case 6:
+//					arm_flag=ch;
+//					flag=-1;
+//					break;
+//			case 7:
+//					rot_flag=ch;
+//					flag=-1;
+//					break;
+//			
+//			case 8:
+//					uint8_t bytes[4]={0};
+//					for(int i=0;i<4;i++)
+//					{
+//						bytes[i]=data[bufferp+i];
+//					}
+//					float temp=*(float*)bytes;
+//					target_depth=temp;
+//					printf("%f\n",target_depth);
+//					flag=-1;
+//					break;
+//			case 9:
+//					for(int i=0;i<4;i++)
+//					{
+//						bytes[i]=data[bufferp+i];
+//					}
+//					temp=*(float*)bytes;
+//					target_yaw=temp;
+//					flag=-1;
+//					break;
+//			default:
+//					break;
+//				
+//		}
+//		if(flag==-1)
+//			break;
+//		bufferp++;
+//		}
+//	
+//	
+//}
+void serial_parse_data(uint8_t*data,int len)  //0xfe 0x10 xx(0x00~0x08)//??
+																							//0xfe 0x20 xx(0x00,0x01)//?
+{
+	
+	
+	int bufferp=0;
+	int flag=0;
+	int back=0;
+	uint8_t ch=0;
+	while(bufferp<len)
+	{
+		ch=data[bufferp];
+		switch(flag)
+		{
+			case 0:
+			if(ch==0xfe)
+				flag=1;
+			if(ch==0xae)
+				flag=15;
+			break;
+			case 1:
+				if(ch==0x10)
+					flag=2;
+				else if(ch==0x20)
+					flag=3;
+				else if(ch==0x30)
+					flag=4;
+				else if(ch==0x40)
+					flag=5;
+				else if(ch==0x50)
+					flag=6;
+				else if(ch==0x60)
+					flag=7;
+				else if(ch==0x70)
+					flag=8;
+				else if(ch==0x80)
+					flag=9;
+				else if(ch==0x90)
+				flag=10;
+				break;
+			case 2:
+					move_flag=ch;
+					if(data[bufferp+1]!=0)
+							move_gain=data[bufferp+1];
+					flag=back;
+					break;
+			case 3:
+					light_flag=ch;
+					flag=back;
+					break;
+			case 4:
+					y_flag=ch;
+					if(data[bufferp+1]!=0)
+							y_gain=data[bufferp+1];
+					flag=back;
+					break;
+			case 5:
+					cam_flag=ch;
+					flag=back;
+					break;
+			case 6:
+					arm_flag=ch;
+					flag=back;
+					break;
+			case 7:
+					rot_flag=ch;
+					flag=back;
+					break;
+			
+			case 8:
+					uint8_t bytes[4]={0};
+					for(int i=0;i<4;i++)
+					{
+						bytes[i]=data[bufferp+i];
+					}
+					float temp=*(float*)bytes;
+					target_depth=temp;
+					printf("%f\n",target_depth);
+					flag=back;
+					break;
+			case 9:
+					for(int i=0;i<4;i++)
+					{
+						bytes[i]=data[bufferp+i];
+					}
+					temp=*(float*)bytes;
+					target_yaw=temp;
+					flag=back;
+					break;
+			case 10:
+					cali_flag=1;
+					flag=back;
+					break;
+			case 15:
+					char str[64];
+					memcpy(str,data+bufferp,len-bufferp);
+					sscanf(str,"%f,%f,%f",&yvpid.kp,&yvpid.ki,&yvpid.kd);
+					
+					flag=back;
+					break;
+					
+			default:
+					break;
+				
+		}
+		if(flag==-1)
+			break;
+		bufferp++;
+		}
+	
+	
+}
+void a_serial_parse_data(uint8_t*data,int len)  //0xfe 0x10 xx(0x00~0x08)//??
+																							//0xfe 0x20 xx(0x00,0x01)//?
+{
+	int bufferp=0;
+	int flag=0;
+	uint8_t ch=0;
+	while(bufferp<len)
+	{
+		ch=data[bufferp];
+		switch(flag)
+		{
+			case 0:
+			if(ch==0xfe)
+				flag=1;
+			break;
+			case 1:
+				
+				if(ch==0x70)
+					flag=8;
+				else if(ch==0x80)
+					flag=9;
+				break;
+			
+			case 8:
+					uint8_t bytes[4]={0};
+					for(int i=0;i<4;i++)
+					{
+						bytes[i]=data[bufferp+i];
+					}
+					float temp=*(float*)bytes;
+					target_depth=temp;
+					//printf("%f\n",target_depth);
+					flag=-1;
+					break;
+			case 9:
+					for(int i=0;i<4;i++)
+					{
+						bytes[i]=data[bufferp+i];
+					}
+					temp=*(float*)bytes;
+					target_yaw=temp;
+					flag=-1;
+					break;
+			default:
+					break;
+				
+		}
+		if(flag==-1)
+			break;
+		bufferp++;
+		}
+	
+	
+}
+void cam_setpwm(int pwm)
+{
+	if(pwm>=1400&&pwm<=1850)
+		__HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,pwm);
+}
+int cam_pwm=1800;
+void cam_set(int flag)
+{
+if(flag==2)
+{
+	cam_pwm+=5;
+}
+else if(flag==1)
+{
+	cam_pwm-=5;
+}
+cam_setpwm(cam_pwm);
+}
+//void main_task()
+//{
+//	 // ?? DMA ??
+//    HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer, 64);
+
+//    // ??????
+//    __HAL_UART_ENABLE_IT(&huart8, UART_IT_IDLE);
+//	
+//	while(1)
+//	{
+//		
+//		if(uart8_rx_flag==1)
+//		{
+//			serial_parse_data(rc_buffer,uart8_msg_len);	
+//			uart8_rx_flag=0;
+//		}
+//		/*else{
+//			move_flag=6;
+//			y_flag=4;
+//			light_flag=2;
+//			cam_flag=0;
+//		}*/
+//		move(move_flag);
+//		light(25,light_flag);
+//		y_control(y_flag);
+//		cam_set(cam_flag);
+//		uint16_t msg[11];
+//		msg[0]=0x01fe;
+//		for(int i=0;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//		}
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		printf("%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag);
+//		//HAL_Delay(1);
+//		//char str[20];
+//		//sprintf(str,"%f",ms5837_depth);
+//		//HAL_UART_Transmit(&huart8,str,strlen(str),0xff);
+//		
+//		vTaskDelay(pdMS_TO_TICKS(50));
+//		}
+//		
+//		
+//}
+void rot_control(int mflag)
+{
+if(mflag==4||mflag==5)
+{
+		float gain=(float)move_gain/256*max_gain;
+	int mset[2][4]={{1,1,1,-1},{1,1,-1,1}};
+if(mflag==4)//conterclock
+{
+pwm[2]=1500+(int)gain;
+pwm[3]=1500-(int)gain;
+	
+	
+}
+
+else
+{
+	pwm[2]=1500-(int)gain;
+pwm[3]=1500+(int)gain;
+}
+
+float out=pid_control(&apid,-accy);
+for(int i=0;i<2;i++)
+{
+pwm[i]=1500+out;
+}
+
+
+}
+
+}
+extern controler con;
+void can_parse()
+{
+	float deadzone=0.2;
+	int x_press=0;
+	float temp;
+	float raw;
+	
+	raw=con.stick_lx;
+	temp=fabs(con.stick_lx);
+if(temp>deadzone)
+{
+	move_gain=temp;
+	if(con.stick_lx>deadzone)
+		move_flag=3;
+	else if(con.stick_lx<-deadzone)
+		move_flag=2;
+	else
+		move_flag=6;
+}
+else
+{
+	move_gain=0;
+}
+
+	raw=con.stick_ly;
+	temp=fabs(raw);
+if(temp>deadzone)
+{
+	move_gain=temp;
+	if(raw>deadzone)
+		move_flag=1;
+	else if(raw<-deadzone)
+		move_flag=0;
+	else
+		move_flag=6;
+}
+else
+{
+	move_gain=0;
+}
+
+raw=con.stick_rx;
+	temp=fabs(raw);
+if(temp>deadzone)
+{
+	move_gain=temp;
+	if(raw>deadzone)
+		move_flag=5;
+	else if(raw<-deadzone)
+		move_flag=4;
+	else
+		move_flag=6;
+}
+else
+{
+	move_gain=0;
+}
+
+
+raw=con.stick_ry;
+	temp=fabs(raw);
+if(temp>deadzone)
+{
+	y_gain=temp;
+	if(raw>deadzone)
+		y_flag=1;
+	else if(raw<-deadzone)
+		y_flag=0;
+	else
+		y_flag=2;
+}
+else
+{
+	y_gain=0;
+}
+
+
+}
+void main_task()
+{
+	for(int i=0;i<8;i++)
+	{
+	pwm[i]=1500;
+	}
+	uint16_t msg[11];
+		msg[0]=0x01fe;
+		for(int i=0;i<8;i++)
+		{
+		msg[i+1]=1500;
+		}
+		msg[9]=1000;
+		msg[10]=1000;
+		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+		HAL_Delay(5000);		
+	 // ?? DMA ??
+    HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer,64);
+
+    // ??????
+    __HAL_UART_ENABLE_IT(&huart8, UART_IT_IDLE);
+	target_yaw=yaw;
+	while(1)
+	{
+		
+		if(uart8_rx_flag==1)
+		{
+				serial_parse_data(rc_buffer,uart8_msg_len);
+			//can_parse();
+			//else if(uart8_msg_len==6)
+				//a_serial_parse_data(rc_buffer,6);
+			//printf("%f\n",target_depth);
+			//printf("%f",dpid.kd);
+			uart8_rx_flag=0;
+			
+		}
+		/*else{
+			move_flag=6;  
+			y_flag=4;
+			light_flag=2;
+			cam_flag=0;
+		}*/
+		//if(1)
+		if(arm_flag==0)
+		{
+		if(cali_flag==1)
+		{
+		target_roll=roll;
+		target_pitch=pitch;
+		target_yaw=yaw;
+		cali_flag=0;
+		printf("cali");
+		}
+		}
+		if(arm_flag!=0)
+		{
+			cam_set(cam_flag);
+		light(25,light_flag);
+		//move(move_flag);
+		//y_control(y_flag);
+			//if(rot_flag==0)
+			{
+				set_control(move_flag,y_flag);
+			
+			}
+//		else
+//		{
+//			rot_control(move_flag);
+//		}
+
+		for(int i=0;i<10;i++)
+		{
+		msg[i+1]=pwm[i];
+		}
+		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+		
+		}
+		else
+			{
+				target_depth=0.1;
+				//target_yaw=0;
+				cam_set(cam_flag);
+		light(25,light_flag);
+		//a_set_control(move_flag,y_flag);
+				move(move_flag);
+				y_control(y_flag);
+		for(int i=0;i<8;i++)
+				{
+				msg[i+1]=pwm[i];
+					//printf("%d,",pwm[i]);
+				}
+		for(int i=8;i<10;i++)
+		{
+		msg[i+1]=pwm[i];
+			
+		}
+		//printf("\n");
+		/*char str[20];
+		sprintf(str,"%f\n",ms5837_depth);
+		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);*/
+		//printf("%f\n",yaw);
+
+		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+		
+
+			}
+		//	printf("%f\n",yaw_total);
+			//printf("pos:%f,%f,%f\nangle:%f,%f,%f\n",pos_x,pos_y,pos_z,roll,pitch,yaw);
+			//printf("d=%f\n",ms5837_depth);
+			//printf("%f,%f,%f\n",fpos_x,fpos_y,ms5837_depth);
+		//printf("flag=%d,%d,%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag,rot_flag,arm_flag);
+		vTaskDelay(pdMS_TO_TICKS(20));//
+		}
+		
+		
+}
+
+	
+
+volatile int test_flag=0;
+	void parse(uint8_t*data)
+	{
+		if(data[0]==0xfe)
+		{
+			test_flag=data[1];
+		}
+		
+	}
+void flag_pwm(int flag)
+{
+	
+		for(int i=0;i<8;i++)
+		{
+			pwm[i]=1500;
+		}
+	if(flag!=0)
+	{
+		pwm[flag-1]=1550;
+	}
+}
+int tick=0;
+int timer=0;
+void delay_us(int us)
+{
+	tick=us;
+	while(tick>=0);
+	
+}
+
+
+
+
+extern JY901_Msg_t uart6_msg;
+
+void maininit()
+{
+
+JY901_UART_Init();
+while(1)
+	{
+		if(uart6_it_flag==1)
+		{
+		JY901_ParseData(uart6_msg.data, uart6_msg.len);
+		uart6_it_flag=0;
+			target_yaw=yaw;
+			//target_roll=roll;
+			//target_pitch=pitch;
+			//printf("%f,%f,%f\n",roll,pitch,yaw);
+			break;
+		}
+
+}
+	target_pitch=zero_pitch;
+	target_roll=zero_roll;
+}
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MPU Configuration--------------------------------------------------------*/
+  MPU_Config();
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_USART1_UART_Init();
+  MX_FDCAN1_Init();
+  MX_SPI1_Init();
+  MX_SPI2_Init();
+  MX_I2C4_Init();
+  MX_SPI4_Init();
+  MX_UART8_Init();
+  MX_FDCAN2_Init();
+  MX_UART7_Init();
+  MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
+  MX_UART4_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
+  MX_TIM5_Init();
+  MX_USART6_UART_Init();
+  MX_I2C2_Init();
+  MX_TIM6_Init();
+  /* USER CODE BEGIN 2 */
+	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+	__HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,cam_pwm);
+	can_init();
+maininit();
+//necc
+//{
+//JY901_UART_Init();
+//while(1)
+//	{
+//		if(uart6_it_flag==1)
+//		{
+//		JY901_ParseData(uart6_msg.data, uart6_msg.len);
+//		uart6_it_flag=0;
+//			target_yaw=yaw;
+//			printf("%f,%f,%f\n",roll,pitch,yaw);
+//			break;
+//		}
+//		
+////		char str[100];
+////			sprintf(str,"roll=%f\n",roll);
+////			HAL_UART_Transmit(&huart1,(uint8_t*)str,strlen(str),100);
+//		//printf("%f,%f,%f,%f,%f,%f\n",accx,accy,accy,magx,magy,magz);
+//		//printf("r=%f,p=%f,y=%f\n",roll,pitch,yaw);
+//		//printf("r=%f,p=%f,y=%f\n",angx,angy,angz);
+//	}
+//	//calibarition
+//	//zero_pitch=0;
+//	//zero_roll=0;
+//	target_pitch=zero_pitch;
+//	target_roll=zero_roll;
+//	
+//}
+
+	//	ms5837_Init();
+//	ms5837_test();
+//jy901_test();
+
+//	ina226_init();
+//	while(1)
+//	{
+//		float v=ina226_busvoltage_v();
+//		//HAL_UART_Transmit(&huart3,str,strlen(str),0xff);
+//	printf("%fV\n",v);
+//	HAL_Delay(1000);
+//	}
+
+//	HAL_UART_Receive_DMA(&huart7, uart7_rx_buffer, 64);
+//  __HAL_UART_ENABLE_IT(&huart7, UART_IT_IDLE);
+//	while(1)
+//	{
+//	if(uart7_flag==1)
+//	{
+//	printf("%s\n",uart7_msg);
+//	uart7_flag=0;
+//	}
+//	HAL_Delay(1000);
+//	}
+//	while(1)
+//	{
+//		uint8_t data[8]={0xfe,0x01,0x02,0x03};
+//	HAL_UART_Transmit(&huart7,data,8,0xff);
+//	HAL_Delay(1000);
+//	}
+	
+
+	
+//ina226_init();
+//while(1)
+//{float v=ina226_busvoltage_v();
+//printf("v=%f\n",v);
+//HAL_Delay(100);
+//}
+//can test
+//	can_init();
+//	while(1)
+//	{
+//		uint8_t data[8]={0};
+//		for (int i=0;i<8;i++)
+//		{
+//			data[i]=i;
+//		}
+//		can_send(0x100,data,8);
+//		HAL_Delay(100);
+//	}
+//		
+//		
+		
+//ICM42688_CONFIG_STRUCT ICM42688_CONFIG={GYRO_250DPS,GYRO_ODR_100HZ,ACC_8G,ACC_ODR_500HZ,_2st,Bandwidth_Factor_4,_2st,Bandwidth_Factor_4,Bias_On_Chip_Off};
+//icm42688_init(&ICM42688_CONFIG);
+//	
+
+
+//ist8310_init();
+//ist8310_set_average(IST8310_4_AVERAGE_Y,IST8310_4_AVERAGE_X_Z);
+	
+	//Mahony_Init(&filter);
+	
+	/*{
+		HAL_UART_Receive_DMA(&huart7, serial_rx_buffer, 255);
+    __HAL_UART_ENABLE_IT(&huart7, UART_IT_IDLE);
+		}*/
+		
+		//new_sona_test
+		
+
+		
+		
+//				//sona test
+		//						char str[20];
+		//		sprintf(str,"hello\n");
+		//HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+//		can_init();
+//	uint8_t raw_pack[8]={0x02,0x03,0x02,0x01,0x00,0x01};
+//uint16_t crc=crc16(raw_pack,6);
+
+
+
+//uint8_t pack[8];
+//	for(int i=0;i<6;i++)
+//	{
+//	pack[i]=raw_pack[i];
+//	}
+//	pack[6]=crc>>8;
+//	pack[7]=crc&0xff;
+//			{
+//		HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer,uart4_buffer_size);
+//    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+//		}
+//			{
+//		HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer,uart2_buffer_size);
+//    __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+//		}
+//		
+//		
+//		//uint8_t msg[8]={0xff,0x06,0x02,0x3d,0x00,0x00,0x0c,0x60};		
+//		//uint8_t msg[8]={0x02,0x03,0x02,0x01,0x00,0x01,0xd4,0x41};//uart4 02 uart2 01
+//		//uint8_t msg[8]={0xff,0x03,0x02,0x00,0x00,0x01,0x90,0x6c};
+//		//uint8_t msg2[8]={0x01,0x6c,0x07,0x01,0xff,0x01,0x75};
+//		uint8_t msg13[7]={0x01,0x6a,0x07,0x01,0xff,0x3f,0xb1};
+//		uint8_t msg23[7]={0x02,0x6a,0x07,0x01,0xff,0x3f,0xb2};
+//		//uint8_t msg2[8]={0x01,0x06,0x02,0x3f,0x00,0x01,0x79,0xbe};
+//		//uint8_t msg2[8]={0x01,0x06,0x02,0x3f,0x00,0x00,0xb8,0x7e};
+//		uint8_t msg[8]={0xff,0x06,0x02,0x3c,0x00,0x08,0x5c,0x66};
+//			//HAL_UART_Transmit(&huart2,msg,8,0xff);
+//		HAL_Delay(10);
+//					//HAL_UART_Transmit(&huart2,msg2,8,0xff);
+//HAL_Delay(10);
+//			//HAL_UART_Receive_IT(&huart2,uart2_rx_buffer,8);
+//			//HAL_UART_Transmit(&huart4,msg,8,0xff);
+//		HAL_Delay(10);
+////printf("hello\n");
+//			//HAL_UART_Receive_IT(&huart4,uart4_rx_buffer,8);
+//		
+//		while(1) 
+//		{
+//			//HAL_UART_Transmit(&huart2,msg13,7,0xff);
+//		//uint8_t data[2]={0xac,0xbc};
+//		//HAL_UART_Transmit(&huart8,data,2,0xff);
+//			uint8_t can_data[8]={0xfa};
+//			can_send(0x01,can_data,8);
+//			//HAL_Delay(10);
+//			//HAL_UART_Transmit(&huart4,msg23,7,0xff);
+//			HAL_Delay(100);
+//		}
+
+		//ms5837_Init();
+		//ms5837_test();
+		
+
+//		bme280_init();
+//		setTemperatureCompensation(0);
+//		bme280_test();
+//		while(1)
+//		{
+//		}
+
+//	while(1)
+//	{                         
+//		ist8310_update();
+//		ICM42688_Get_Data();
+//		
+//		
+
+
+//		
+//		printf("%f,%f,%f,",ICM42688.acc_x,ICM42688.acc_y,ICM42688.acc_z);
+//		
+//		//printf("%f,%f,%f,",ICM42688.gyro_x-0.1,ICM42688.gyro_y-0.1,ICM42688.gyro_z-0.1);
+//		
+//		printf("%f,%f,%f\n",_magnetometer.x,_magnetometer.y,_magnetometer.z);
+//		
+////		sensor.ax=ICM42688.acc_x;
+////		sensor.ay=ICM42688.acc_y;
+////		sensor.az=ICM42688.acc_z;
+////		sensor.gx=ICM42688.gyro_x;
+////		sensor.gy=ICM42688.gyro_y;
+////		sensor.gz=ICM42688.gyro_z;
+////		sensor.mx=_magnetometer.x;
+////		sensor.my=_magnetometer.y;
+////		sensor.mz=_magnetometer.z;
+////		Mahony_Update(&filter,&sensor,0.1);
+////		QuaternionToEuler(&filter);
+////		printf("%f,%f,%f\n",filter.roll,filter.pitch,filter.yaw);
+//		
+//		
+//		
+//		HAL_Delay(100);
+//	
+//}
+//	
+
+
+  /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+	}
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Supply configuration update enable
+  */
+  HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+
+  while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 2;
+  RCC_OscInitStruct.PLL.PLLN = 80;
+  RCC_OscInitStruct.PLL.PLLP = 2;
+  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+  RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+  RCC_OscInitStruct.PLL.PLLFRACN = 0;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
+                              |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
+  RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI2|RCC_PERIPHCLK_SPI1;
+  PeriphClkInitStruct.PLL2.PLL2M = 2;
+  PeriphClkInitStruct.PLL2.PLL2N = 20;
+  PeriphClkInitStruct.PLL2.PLL2P = 2;
+  PeriphClkInitStruct.PLL2.PLL2Q = 2;
+  PeriphClkInitStruct.PLL2.PLL2R = 2;
+  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
+  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+  PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/* USER CODE BEGIN 4 */
+
+
+/* USER CODE END 4 */
+
+ /* MPU Configuration */
+
+void MPU_Config(void)
+{
+  MPU_Region_InitTypeDef MPU_InitStruct = {0};
+
+  /* Disables the MPU */
+  HAL_MPU_Disable();
+
+  /** Initializes and configures the Region and the memory to be protected
+  */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.BaseAddress = 0x0;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+  MPU_InitStruct.SubRegionDisable = 0x87;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+  /* Enables the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM2 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+if(htim->Instance==TIM5)
+{
+	tick--;
+	timer++;
+}
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM2) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */

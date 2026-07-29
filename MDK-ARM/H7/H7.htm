@@ -3,7 +3,7 @@
 <title>Static Call Graph - [H7\H7.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image H7\H7.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Wed Jul 29 18:45:06 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Wed Jul 29 20:07:49 2026
 <BR><P>
 <H3>Maximum Stack Usage =        400 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1724,7 +1724,6 @@ Global Symbols
 <LI><a href="#[13a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_WaitOnFlagUntilTimeout
 </UL>
 <BR>[Called By]<UL><LI><a href="#[9e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main_task
-<LI><a href="#[a0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;jy901_task
 <LI><a href="#[186]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;jy901_send
 </UL>
 
@@ -2363,11 +2362,10 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[189]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;jy901_write
 </UL>
 
-<P><STRONG><a name="[a0]"></a>jy901_task</STRONG> (Thumb, 726 bytes, Stack size 16 bytes, jy901.o(i.jy901_task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 80<LI>Call Chain = jy901_task &rArr; HAL_UART_Transmit &rArr; UART_WaitOnFlagUntilTimeout
+<P><STRONG><a name="[a0]"></a>jy901_task</STRONG> (Thumb, 714 bytes, Stack size 16 bytes, jy901.o(i.jy901_task))
+<BR><BR>[Stack]<UL><LI>Max Depth = 80<LI>Call Chain = jy901_task &rArr; vTaskDelay &rArr; xTaskResumeAll &rArr; xTaskIncrementTick
 </UL>
-<BR>[Calls]<UL><LI><a href="#[139]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit
-<LI><a href="#[17d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;vTaskDelay
+<BR>[Calls]<UL><LI><a href="#[17d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;vTaskDelay
 <LI><a href="#[188]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;rotation
 <LI><a href="#[187]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;JY901_ParseData
 </UL>

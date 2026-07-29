@@ -402,7 +402,7 @@ if(count>=100)
 	att.roll=roll;
 	att.pitch=pitch;
 	att.yaw=yaw;
-	HAL_UART_Transmit(&huart8,(uint8_t*)&att,sizeof(jy901_att),0xff);
+	//HAL_UART_Transmit(&huart8,(uint8_t*)&att,sizeof(jy901_att),0xff);
 	count=0;
 }
 		}

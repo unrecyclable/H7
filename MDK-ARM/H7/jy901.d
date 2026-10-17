@@ -53,3 +53,4 @@ h7\jy901.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
 h7\jy901.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 h7\jy901.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 h7\jy901.o: ../Drivers/ms5837_uart.h
+h7\jy901.o: ../Drivers/connection.h

@@ -171,9 +171,9 @@ void ms5837_task()
 			//sprintf(str,"press=%f\n",ms5837_depth);
 			//HAL_UART_Transmit(&huart1,(uint8_t*)str,strlen(str),100);
 			//printf("press=%f\n",ms5837_depth);
-//						char str[20];
-//		sprintf(str,"%f\n",ms5837_depth);
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+						char str[20];
+		sprintf(str,"%f\n",ms5837_depth);
+		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
 		uart3_it_flag=0;
 		
 		}

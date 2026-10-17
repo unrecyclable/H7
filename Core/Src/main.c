@@ -397,9 +397,12 @@ len=64- __HAL_DMA_GET_COUNTER(huart8.hdmarx);
       HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer,64);
     }
 }
-int arm_flag=0;
+
+int auto_flag=0;
 int rot_flag=0;
+int drop_flag=0;
 int move_flag=6,light_flag=2,y_flag=4,cam_flag=0;
+int en_flag=0;
 int move_gain=0,y_gain=0;
 float f_move_gain=0,f_y_gain=0;
 float cam_gain=0,light_gain=0;
@@ -813,7 +816,15 @@ void new_light(float gain)
 	else if(new>1500)
 		new=1500;
 	pwm[8]=new;
-	pwm[9]=new;
+	//pwm[9]=new;
+	if(drop_flag==1)
+	{
+	pwm[9]=2000;
+	}
+	else
+	{
+	pwm[9]=1000;
+	}
 }	
 void y_control(int flag)
 {
@@ -844,8 +855,11 @@ void new_y_control(int flag)
 	{		for(int i=0;i<4;i++)
 		{
 			pwm[i+4]=(int)(gain*(updown[flag][i])+1500);
+			
 		}
+			//printf("gain=%f\n",f_y_gain);
 	}
+
 	else if(flag==4)
 	{
 		for(int i=0;i<4;i++)
@@ -874,9 +888,11 @@ int max_out1=200;
 float fpos_x=-1.5,fpos_y=0;
 void set_control(int mflag,int yflag)
 {
+	
 	float gain=(float)move_gain/256*max_gain;
 	float ygain=(float)y_gain/256*max_gain;
 	float max_yaw_step=2;
+	//float max_depth_step=0.01;//0.025;
 	float max_depth_step=0.01;//0.025;
 	for(int i=0;i<4;i++)
 	{
@@ -914,7 +930,7 @@ void set_control(int mflag,int yflag)
 		}
 		}
 	}
-	else if(mflag>=4&&mflag<=5)
+	else if(mflag>=4&&mflag<=5)//左右旋转实际上是通过改变目标偏航角实现的。
 	{
 			if(mflag==4)
 			//target_yaw=angle_loop_add(target_yaw,(float)move_gain/255*max_yaw_step);
@@ -939,12 +955,14 @@ void set_control(int mflag,int yflag)
 		for(int i=0;i<4;i++)
 			pwm[i+4]=1500;
 		
-			if(yflag==0)
+			if(yflag==0)//上浮下潜动作实际上是改变目标深度值实现的。
 			{target_depth-=(float)y_gain/255*max_depth_step;
 			if(target_depth<0.001)
 				target_depth=0.001;}
 			if(yflag==1)
 			target_depth+=(float)y_gain/255*max_depth_step;
+			if(target_depth>0.6)
+				target_depth=0.6;
 			//printf("target_depth=%f\n",target_depth);
 	}
 	else if(yflag>=2&&yflag<=3)
@@ -960,17 +978,20 @@ void set_control(int mflag,int yflag)
 	
 	//printf("%f,%f\n",target_depth,target_yaw);
 
-deep_pid();
-yaw_pid();
+	//上面的部分是计算在理想的情况下，完成对应的动作电机的输出如何
+	//下面的控制部分为了维持该理想情况，电机如何输出，两部分叠加就是实际的输出
+	//叠加的部分在里面集成了
+deep_pid();//深度控制 
+yaw_pid();//偏航角控制
 	if(yflag!=2&&yflag!=3)
-		stable();
+		stable();//自稳控制(roll和pitch角=0)
 for(int i=0;i<4;i++)
 {
-pwm[i]=range(pwm[i],1500-max_out,1500+max_out);
+pwm[i]=range(pwm[i],1500-max_out,1500+max_out);//输出限幅
 }
 for(int i=4;i<8;i++)
 {
-pwm[i]=range(pwm[i],1500-max_out1,1500+max_out1);
+pwm[i]=range(pwm[i],1500-max_out1,1500+max_out1);//输出限幅
 }
 	
 }
@@ -1094,7 +1115,7 @@ void a_set_control(int mflag,int yflag)
 //					flag=-1;
 //					break;
 //			case 6:
-//					arm_flag=ch;
+//					auto_flag=ch;
 //					flag=-1;
 //					break;
 //			case 7:
@@ -1194,7 +1215,7 @@ void serial_parse_data(uint8_t*data,int len)  //0xfe 0x10 xx(0x00~0x08)//??
 					flag=back;
 					break;
 			case 6:
-					arm_flag=ch;
+					auto_flag=ch;
 					flag=back;
 					break;
 			case 7:
@@ -1404,7 +1425,17 @@ void can_parse()
 	int y_press=0;
 	float temp;
 	float raw;
+	en_flag=con.bits&0x01;
+	auto_flag=(con.bits>>2)&0x01;
+cali_flag=(con.bits>>1)&0x01;
+drop_flag=(con.bits>>3)&0x01;
+	light_gain=con.light;
+cam_gain=con.cam;
 	
+	if(auto_flag==1)
+	{
+		if(en_flag==0)
+		{
 	raw=con.stick_lx;
 	temp=fabs(con.stick_lx);
 	if(x_press==0)
@@ -1463,6 +1494,7 @@ else
 	
 }
 }
+
 if(x_press==0)
 {
 move_flag=6;
@@ -1488,20 +1520,258 @@ else
 	
 }
 }
+
 if(y_press==0)
 {
-y_flag=2;
+y_flag=4;
+}
+else
+	{
+raw=con.stick_lx;
+	temp=fabs(con.stick_lx);
+	if(x_press==0)
+{
+if(temp>deadzone)
+{
+	f_move_gain=temp;
+	if(con.stick_lx>deadzone)
+		move_flag=3;
+	else if(con.stick_lx<-deadzone)
+		move_flag=2;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
+}
+	raw=con.stick_ly;
+	temp=fabs(raw);
+if(x_press==0)
+{
+if(temp>deadzone&&x_press==0)
+{
+	f_move_gain=temp;
+	if(raw>deadzone)
+		move_flag=1;
+	else if(raw<-deadzone)
+		move_flag=0;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
+}
+//printf("l=%f,%f\n",con.stick_lx,con.stick_ly);
+raw=con.stick_r;
+	temp=fabs(raw);
+if(x_press==0){
+	
+if(temp>deadzone)
+{
+	f_move_gain=temp;
+	if(raw>deadzone)
+		move_flag=5;
+	else if(raw<-deadzone)
+		move_flag=4;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
 }
 
-arm_flag=con.bits&0x01;
-cali_flag=(con.bits>>1)&0x01;
-light_gain=con.light;
-cam_gain=con.cam;
+if(x_press==0)
+{
+move_flag=6;
+}
 
 
+raw=con.stick_p;
+	temp=fabs(raw);
+if(y_press==0)
+{
+if(temp>deadzone)
+{
+	f_y_gain=temp;
+	if(raw>deadzone)
+		y_flag=1;
+	else if(raw<-deadzone)
+		y_flag=0;
+	y_press=1;
+}
+else
+{
+	f_y_gain=0;
+	
+}
+}
+
+if(y_press==0)
+{
+y_flag=4;
+}
+}
+}
+		}
+
+		else if(auto_flag==0)
+	{
+	
+	raw=con.stick_lx;
+	temp=fabs(con.stick_lx);
+	if(x_press==0)
+{
+if(temp>deadzone)
+{
+	f_move_gain=temp;
+	if(con.stick_lx>deadzone)
+		move_flag=3;
+	else if(con.stick_lx<-deadzone)
+		move_flag=2;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
+}
+	raw=con.stick_ly;
+	temp=fabs(raw);
+if(x_press==0)
+{
+if(temp>deadzone&&x_press==0)
+{
+	f_move_gain=temp;
+	if(raw>deadzone)
+		move_flag=1;
+	else if(raw<-deadzone)
+		move_flag=0;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
+}
+
+raw=con.stick_rx;
+	temp=fabs(raw);
+if(x_press==0){
+	
+if(temp>deadzone)
+{
+	f_move_gain=temp;
+	if(raw>deadzone)
+		move_flag=5;
+	else if(raw<-deadzone)
+		move_flag=4;
+	x_press=1;
+}
+else
+{
+	f_move_gain=0;
+	
+}
+}
+
+if(x_press==0)
+{
+move_flag=6;
+}
+
+
+if(en_flag==1)
+{
+raw=con.stick_p;
+	temp=fabs(raw);
+if(y_press==0)
+{
+if(temp>deadzone)
+{
+	f_y_gain=temp;
+	if(raw>deadzone)
+		y_flag=1;
+	else if(raw<-deadzone)
+		y_flag=0;
+	y_press=1;
+}
+else
+{
+	f_y_gain=0;
+	
+}
+}
+raw=con.stick_r;
+	temp=fabs(raw);
+if(y_press==0)
+{
+if(temp>deadzone)
+{
+	f_y_gain=temp;
+	if(raw>deadzone)
+		y_flag=3;
+	else if(raw<-deadzone)
+		y_flag=2;
+	y_press=1;
+}
+else
+{
+	f_y_gain=0;
+	
+}
+}
+
+if(y_press==0)
+{
+y_flag=4;
+}
+}
+//
+else
+{
+raw=con.stick_ry;
+	temp=fabs(raw);
+if(y_press==0)
+{
+if(temp>deadzone)
+{
+	f_y_gain=temp;
+	if(raw>deadzone)
+		y_flag=1;
+	else if(raw<-deadzone)
+		y_flag=0;
+	y_press=1;
+}
+else
+{
+	f_y_gain=0;
+	
+}
+}
+
+
+if(y_press==0)
+{
+y_flag=4;
+}
+}	
+		
+	}
+
+
+//printf("r=%f,p=%f\n",con.stick_r,con.stick_p);
 
 //printf("%d,%f\n",move_flag,f_move_gain);
 }
+	
 int auto_count=0;
 int auto_rot_flag=0;
 int rot_count=0;
@@ -1512,7 +1782,7 @@ float auto_a=2.5;
 float auto_b=1.5;
 volatile int yaw_count=0;
 float yaw_c=0;
-
+//net version
 // void main_task()
 // {
 // 	for(int i=0;i<8;i++)
@@ -1559,7 +1829,7 @@ float yaw_c=0;
 // 		//if(1)
 
 //		
-// 		if(arm_flag==0)
+// 		if(auto_flag==0)
 // 		{
 //// 		if(cali_flag==1)
 //// 		{
@@ -1570,7 +1840,7 @@ float yaw_c=0;
 //// 		printf("cali");
 //// 		}
 // 		}
-// 		if(arm_flag!=0)
+// 		if(auto_flag!=0)
 // 		{
 //			if(cali_flag==0)
 //			{
@@ -1745,36 +2015,285 @@ float yaw_c=0;
 // }
 
 
-//can version
+//can version latest
+//int can_en=0;
+//	void main_task()
+//{
+//	for(int i=0;i<8;i++)
+//	{
+//	pwm[i]=1500;
+//	}
+//	uint16_t msg[11];
+//		msg[0]=0x01fe;
+//		for(int i=0;i<8;i++)
+//		{
+//		msg[i+1]=1500;
+//		}
+//		msg[9]=1000;
+//		msg[10]=1000;
+//		HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer,64);
+//     __HAL_UART_ENABLE_IT(&huart8, UART_IT_IDLE);
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		HAL_Delay(5000);		
+//	target_yaw=yaw;
+//	while(1)
+//	{
+//		
+//		if(can_flag==1)
+//		{
+//			can_parse();
+//		can_flag=0;
+//			if(can_en==1)
+//			{can_en=0;
+//				
+//			}
+//			
+//		}
+//if(uart8_rx_flag==1)
+// 		{
+//			//cali_flag=0;
+// 			serial_parse_data(rc_buffer,uart8_msg_len);
+//			
+// 			//else if(uart8_msg_len==6)
+// 				//a_serial_parse_data(rc_buffer,6);
+// 			//printf("%f\n",target_depth);
+// 			//printf("%f",dpid.kd);
+// 			uart8_rx_flag=0;
+//			if(can_en==0)
+//			{can_en=1;
+//			}
+//			
+// 		}
+//		
+//		if(auto_flag==0)
+//		{
+////		if(cali_flag==1)
+////		{
+////		target_roll=roll;
+////		target_pitch=pitch;
+////		target_yaw=yaw;
+////		cali_flag=0;
+////		printf("cali");
+////		}
+//		}
+//		if(auto_flag!=0)
+//		{
+//	if(!can_en)
+//			{new_cam_set(cam_gain);
+//		new_light(light_gain);
+//			}
+//			else
+//			{
+//		cam_set(cam_flag);
+// 		light(25,light_flag);
+//			}
+//		set_control(move_flag,y_flag);
+//			
+//			
 
-	void main_task()
-{
-	for(int i=0;i<8;i++)
-	{
-	pwm[i]=1500;
-	}
+
+//		for(int i=0;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//		}
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		//printf("%d\n",auto_flag);
+//		}
+//		else
+//			{
+//				target_depth=0.1;
+//if(!can_en)
+//{
+//	new_cam_set(cam_gain);
+//		new_light(light_gain);
+//	new_move(move_flag);
+//	new_y_control(y_flag);
+//}
+//else
+//	{
+// 		cam_set(cam_flag);
+// 		light(25,light_flag);
+//	move(move_flag);
+// 				y_control(y_flag);
+//	}
+//	
+////printf("flag=%d,%d\n",move_flag,y_flag);
+//	//			printf("gain=%f,%f\n",f_move_gain,f_y_gain);
+//				
+//		for(int i=0;i<8;i++)
+//				{
+//				msg[i+1]=pwm[i];
+
+//				}
+//		for(int i=8;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//			
+//		}
+//		//printf("\n");
+//		/*char str[20];
+//		sprintf(str,"%f\n",ms5837_depth);
+//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);*/
+//		//printf("%f\n",yaw);
+
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		
+
+//			}
+//		//	printf("%f\n",yaw_total);
+//			//printf("pos:%f,%f,%f\nangle:%f,%f,%f\n",pos_x,pos_y,pos_z,roll,pitch,yaw);
+//			//printf("d=%f\n",ms5837_depth);
+//			//printf("%f,%f,%f\n",fpos_x,fpos_y,ms5837_depth);
+//		//printf("flag=%d,%d,%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag,en_flag,auto_flag);
+//		vTaskDelay(pdMS_TO_TICKS(20));//
+//		}
+//		
+//		
+//}
+int can_en=0;
 	uint16_t msg[11];
-		msg[0]=0x01fe;
-		for(int i=0;i<8;i++)
-		{
-		msg[i+1]=1500;
-		}
-		msg[9]=1000;
-		msg[10]=1000;
-		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
-		HAL_Delay(5000);		
-	target_yaw=yaw;
-	while(1)
-	{
-		
-		
-		if(can_flag==1)
+//void rc_with_cable()
+//{
+//	if(can_flag==1)
+//		{
+//			can_parse();
+//		can_flag=0;
+//			if(can_en==1)
+//			{can_en=0;
+//				
+//			}
+//			
+//		}
+//if(uart8_rx_flag==1)
+// 		{
+//			//cali_flag=0;
+// 			serial_parse_data(rc_buffer,uart8_msg_len);
+//			
+// 			//else if(uart8_msg_len==6)
+// 				//a_serial_parse_data(rc_buffer,6);
+// 			//printf("%f\n",target_depth);
+// 			//printf("%f",dpid.kd);
+// 			uart8_rx_flag=0;
+//			if(can_en==0)
+//			{can_en=1;
+//			}
+//			
+// 		}
+//		
+//		if(auto_flag==0)
+//		{
+////		if(cali_flag==1)
+////		{
+////		target_roll=roll;
+////		target_pitch=pitch;
+////		target_yaw=yaw;
+////		cali_flag=0;
+////		printf("cali");
+////		}
+//		}
+//		if(auto_flag!=0)
+//		{
+//	if(!can_en)
+//			{new_cam_set(cam_gain);
+//		new_light(light_gain);
+//			}
+//			else
+//			{
+//		cam_set(cam_flag);
+// 		light(25,light_flag);
+//			}
+//		set_control(move_flag,y_flag);
+//			
+//			
+
+
+//		for(int i=0;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//		}
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		//printf("%d\n",auto_flag);
+//		}
+//		else
+//			{
+//				target_depth=0.1;
+//if(!can_en)
+//{
+//	new_cam_set(cam_gain);
+//		new_light(light_gain);
+//	new_move(move_flag);
+//	new_y_control(y_flag);
+//}
+//else
+//	{
+// 		cam_set(cam_flag);
+// 		light(25,light_flag);
+//	move(move_flag);
+// 				y_control(y_flag);
+//	}
+//	
+////printf("flag=%d,%d\n",move_flag,y_flag);
+//	//			printf("gain=%f,%f\n",f_move_gain,f_y_gain);
+//				
+//		for(int i=0;i<8;i++)
+//				{
+//				msg[i+1]=pwm[i];
+
+//				}
+//		for(int i=8;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//			
+//		}
+//		//printf("\n");
+//		/*char str[20];
+//		sprintf(str,"%f\n",ms5837_depth);
+//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);*/
+//		//printf("%f\n",yaw);
+
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		
+
+//			}
+//}
+
+//can_parse和serial_parse_data都是解析遥控数据的函数
+//为什么有两个是因为serial_parse_data版本走串转网，会和jetson的网口冲突
+//can_parse走can，不占用网口。
+//一开始的控制方案是手柄+上位机，后来改成触控自定义控制器了。
+//serial_parse_data仅作为原始版本保留（手柄必须走网口，也就是必须用serial_parse_data）。
+//can_flag标志实际上是表示有没有接收到can数据，默认为0
+float yaw_temp=0;
+void rc_with_cable()
+{
+//	cali_flag=0;
+	if(can_flag==1)
 		{
 			can_parse();
 		can_flag=0;
+			if(can_en==1)
+			{can_en=0;
+				
+			}
+			
 		}
+if(uart8_rx_flag==1)
+ 		{
+			cali_flag=0;
+ 			serial_parse_data(rc_buffer,uart8_msg_len); 
+			
+ 			//else if(uart8_msg_len==6)
+ 				//a_serial_parse_data(rc_buffer,6);
+ 			//printf("%f\n",target_depth);
+ 			//printf("%f",dpid.kd);
+ 			uart8_rx_flag=0;
+			if(can_en==0)
+			{can_en=1;
+			}
+			
+ 		}
 		
-		if(arm_flag==0)
+		if(auto_flag==0)
 		{
 //		if(cali_flag==1)
 //		{
@@ -1785,12 +2304,157 @@ float yaw_c=0;
 //		printf("cali");
 //		}
 		}
-		if(arm_flag!=0)
+		if(auto_flag!=0)
 		{
-		new_cam_set(cam_gain);
-		new_light(light_gain);
-		set_control(move_flag,y_flag);
 			
+		if (cali_flag == 0)
+{
+	r_flag = 0;
+    t_flag = 0;
+    forward_flag = 0;
+    auto_count = 0;
+	if(!can_en)//can_en(别和can_flag搞混了)这个flag是决定是否启用自动巡线，也是凑数的功能，直接看can_en=0的部分也就是下面就行↓
+			{new_cam_set(cam_gain);
+		new_light(light_gain);
+			move_gain=f_move_gain*256;
+			y_gain=f_y_gain*256;
+			}
+			else
+			{
+		cam_set(cam_flag);
+ 		light(25,light_flag);
+			}
+
+		set_control(move_flag,y_flag);//真正的控制函数，前面的函数负责读取要执行的动作（move_flag,y_flag）
+										//以及执行的力度(move_gain,y_gain)
+										//set_control负责把这些转化为电机的输出(pwm)
+										//需要pid控制的部分也集成在了里面
+		}
+else
+{ 
+	move_gain=125;
+				if(forward_flag==0)
+				{
+					auto_count=0;
+					forward_flag=1;
+				}
+				else if(forward_flag==1)
+				{
+				move_flag=0;
+				y_flag=4;
+				if(auto_count>=auto_a/(0.02))
+				{
+				forward_flag=2;
+					move_flag=6;
+					auto_count=0;
+				}
+				auto_count++;
+				}
+				else if(forward_flag==2)
+				{
+					
+					if(r_flag==0)
+					{
+						yaw_count=0;
+						r_flag=1;
+						
+					}
+					else if(r_flag==1)
+					{
+						if(t_flag==0)
+					target_yaw-=1;
+						else
+					target_yaw+=1;	
+					
+					yaw_count++;
+						if(yaw_count>=95)
+						{
+						r_flag=2;
+						}
+					
+					}
+					else if(r_flag==2)
+					{
+					
+						if(rot_count>=50)
+						{
+						rot_count=0;
+							r_flag=0;
+							forward_flag=3;
+						}
+					rot_count++;
+					}
+					move_flag=6;
+					y_flag=4;
+					
+				}
+				
+				else if(forward_flag==3)
+				{
+					auto_count=0;
+					forward_flag=4;
+				}
+				else if(forward_flag==4)
+				{
+				move_flag=0;
+				y_flag=4;
+				if(auto_count>=auto_b/(0.02))
+				{
+				forward_flag=5;
+					move_flag=6;
+					auto_count=0;
+				}
+				auto_count++;
+				}
+				else if(forward_flag==5)
+				{
+					
+					if(r_flag==0)
+					{
+						yaw_count=0;
+						r_flag=1;
+						
+					}
+					else if(r_flag==1)
+					{
+						if(t_flag==0)
+							target_yaw-=1;
+						else
+							target_yaw+=1;
+						yaw_count++;
+						if(yaw_count>=95)
+						{
+						r_flag=2;
+						}
+					
+					}
+					else if(r_flag==2)
+					{
+					
+						if(rot_count>=50)
+						{
+						rot_count=0;
+							r_flag=0;
+							forward_flag=0;
+							if(t_flag==0)
+							{
+								t_flag=1;
+							}
+							else
+							{
+							t_flag=0;
+							}
+							
+						}
+					rot_count++;
+					}
+					move_flag=6;
+					y_flag=4;
+					
+				}
+
+    set_control(move_flag, y_flag);
+}
 			
 
 
@@ -1798,19 +2462,31 @@ float yaw_c=0;
 		{
 		msg[i+1]=pwm[i];
 		}
-		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
-		//printf("%d\n",arm_flag);
+		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);//把需要的电机和灯的pwm传给下层板
+		//printf("%d\n",auto_flag);
 		}
 		else
 			{
 				target_depth=0.1;
-
-		new_cam_set(cam_gain);
+//下面出现的所有包含new_版本的函数，都是因为刚开始的时候
+if(!can_en)
+{
+	new_cam_set(cam_gain);
 		new_light(light_gain);
+	new_move(move_flag);
+	new_y_control(y_flag);
+}
+else
+	{
+ 		cam_set(cam_flag);
+ 		light(25,light_flag);
+	move(move_flag);
+ 				y_control(y_flag);
+	}
+	
 //printf("flag=%d,%d\n",move_flag,y_flag);
 	//			printf("gain=%f,%f\n",f_move_gain,f_y_gain);
-				new_move(move_flag);
-				new_y_control(y_flag);
+				
 		for(int i=0;i<8;i++)
 				{
 				msg[i+1]=pwm[i];
@@ -1831,16 +2507,240 @@ float yaw_c=0;
 		
 
 			}
+}
+void rc_without_cable()
+{
+	f_move_gain=0.5;
+	f_y_gain=0.5;
+	int test=0;
+	int press=0;
+	int press_y=0;
+	if(control_bits>>(0)&0x01)
+	{
+	new_move(0);//up
+		press=1;
+		test=1;
+	}
+	else if(control_bits>>(1)&0x01)
+	{
+	new_move(1);//down
+			press=1;
+			test=2;
+	}
+	else if(control_bits>>(2)&0x01)
+	{
+	new_move(2);//left
+		press=1;
+			test=3;
+	}
+else if(control_bits>>(3)&0x01)
+	{
+	new_move(3);//right
+		press=1;
+			test=4;
+	}
+	else if(control_bits>>(4)&0x01)
+	{
+	new_move(4);//clock
+		press=1;
+			test=5;
+	}
+	else if(control_bits>>(5)&0x01)
+	{
+	new_move(5);//c-clock
+		press=1;
+			test=6;
+	}
+	else if(control_bits>>(6)&0x01)
+	{
+	new_y_control(0);//up
+		press_y=1;
+			test=7;
+		
+	}
+		else if(control_bits>>(7)&0x01)
+	{
+	new_y_control(1);//down
+		press_y=1;
+			test=8;
+		
+	}
+	if(press==0)
+	{
+		new_move(6);
+		test=9;
+	}
+	if(press_y==0)
+	{
+	new_y_control(4);
+		test=10;
+	}
+	
+	for(int i=0;i<8;i++)
+				{
+				msg[i+1]=pwm[i];
+					
+				}
+		for(int i=8;i<10;i++)
+		{
+		msg[i+1]=1000;
+		}
+	HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+		//printf("raw=%x\n",control_bits);
+		//printf("test=%d\n",test);
+}
+int sona_time_count=0;
+	void main_task()
+{
+	for(int i=0;i<8;i++)
+	{
+	pwm[i]=1500;
+	}
+
+		msg[0]=0x01fe;
+		for(int i=0;i<8;i++)
+		{
+		msg[i+1]=1500;
+		}
+		msg[9]=1000;
+		msg[10]=1000;
+		HAL_UART_Receive_DMA(&huart8, uart8_rx_buffer,64);
+     __HAL_UART_ENABLE_IT(&huart8, UART_IT_IDLE);
+		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+		HAL_Delay(5000);		
+	target_yaw=yaw;
+		
+	while(1)
+	{
+		if(sona_cableless_flag==0)
+			rc_with_cable();//有缆状态下遥控，这种情况下控制数据走通过串转网输入
+		if(sona_cableless_flag)
+		{
+			rc_without_cable();//无缆状况下遥控，这种情况下控制数据走can输入，因为can的数据位数只有8位，所以取消了一些功能。
+								//总之是凑数的功能，不必理会
+			//sona_cableless_flag=0;
+			sona_time_count=0;
+		}
+		if(sona_time_count>5000)
+		{
+		sona_cableless_flag=0;
+		}
+		sona_time_count++;
 		//	printf("%f\n",yaw_total);
 			//printf("pos:%f,%f,%f\nangle:%f,%f,%f\n",pos_x,pos_y,pos_z,roll,pitch,yaw);
 			//printf("d=%f\n",ms5837_depth);
 			//printf("%f,%f,%f\n",fpos_x,fpos_y,ms5837_depth);
-		//printf("flag=%d,%d,%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag,rot_flag,arm_flag);
+		//printf("flag=%d,%d,%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag,en_flag,auto_flag);
+		
 		vTaskDelay(pdMS_TO_TICKS(20));//
 		}
 		
 		
 }
+//pure can version
+//void main_task()
+//{
+//	for(int i=0;i<8;i++)
+//	{
+//	pwm[i]=1500;
+//	}
+//	uint16_t msg[11];
+//		msg[0]=0x01fe;
+//		for(int i=0;i<8;i++)
+//		{
+//		msg[i+1]=1500;
+//		}
+//		msg[9]=1000;
+//		msg[10]=1000;
+
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		HAL_Delay(5000);		
+//	target_yaw=yaw;
+//	while(1)
+//	{
+//		
+
+//		if(can_flag==1)
+//		{
+//			can_parse();
+//		can_flag=0;
+
+//			
+//		}
+
+//		
+//		if(auto_flag==0)
+//		{
+////		if(cali_flag==1)
+////		{
+////		target_roll=roll;
+////		target_pitch=pitch;
+////		target_yaw=yaw;
+////		cali_flag=0;
+////		printf("cali");
+////		}
+//		}
+//		if(auto_flag!=0)
+//		{
+//	new_cam_set(cam_gain);
+//		new_light(light_gain);
+
+//		set_control(move_flag,y_flag);
+//			
+//			
+
+
+//		for(int i=0;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//		}
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		//printf("%d\n",auto_flag);
+//		}
+//		else
+//			{
+//				target_depth=0.1;
+
+//	new_cam_set(cam_gain);
+//		new_light(light_gain);
+//	new_move(move_flag);
+//	new_y_control(y_flag);
+
+
+//	
+////printf("flag=%d,%d\n",move_flag,y_flag);
+//	//			printf("gain=%f,%f\n",f_move_gain,f_y_gain);
+//				
+//		for(int i=0;i<8;i++)
+//				{
+//				msg[i+1]=pwm[i];
+
+//				}
+//		for(int i=8;i<10;i++)
+//		{
+//		msg[i+1]=pwm[i];
+//			
+//		}
+//		//printf("\n");
+//		/*char str[20];
+//		sprintf(str,"%f\n",ms5837_depth);
+//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);*/
+//		//printf("%f\n",yaw);
+
+//		HAL_UART_Transmit(&huart7,(uint8_t*)msg,22,0xff);
+//		
+
+//			}
+//		//	printf("%f\n",yaw_total);
+//			//printf("pos:%f,%f,%f\nangle:%f,%f,%f\n",pos_x,pos_y,pos_z,roll,pitch,yaw);
+//			//printf("d=%f\n",ms5837_depth);
+//			//printf("%f,%f,%f\n",fpos_x,fpos_y,ms5837_depth);
+//		//printf("flag=%d,%d,%d,%d,%d,%d\n",move_flag,y_flag,light_flag,cam_flag,en_flag,auto_flag);
+//		vTaskDelay(pdMS_TO_TICKS(20));//
+//		}
+//		
+//		
+//}
 
 volatile int test_flag=0;
 	void parse(uint8_t*data)

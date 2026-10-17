@@ -157,9 +157,25 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>1683</LineNumber>
+          <LineNumber>853</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134277722</Address>
+          <Address>134274504</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\Core\Src\sona.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\H7\../Core/Src/sona.c\853</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>2357</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134278098</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -168,7 +184,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>../Core/Src/main.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\H7\../Core/Src/main.c\1683</Expression>
+          <Expression>\\H7\../Core/Src/main.c\2357</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>2360</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134278108</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>../Core/Src/main.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\H7\../Core/Src/main.c\2360</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>

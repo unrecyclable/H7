@@ -180,7 +180,7 @@ mainTaskHandle = osThreadNew(main_task,NULL,&mainTask_attributes);
 ms5837TaskHandle = osThreadNew(ms5837_task,NULL,&ms5837Task_attributes);
 jy901TaskHandle = osThreadNew(jy901_task,NULL,&jy901Task_attributes);
 //insTaskHandle = osThreadNew(ins_task,NULL,&insTask_attributes);
-//sonaTaskHandle = osThreadNew(sona_task,NULL,&sonaTask_attributes);
+sonaTaskHandle = osThreadNew(sona_task,NULL,&sonaTask_attributes);
 //xTaskToNotify=xTaskGetHandle("sonaTask");
   /* USER CODE END RTOS_THREADS */
 

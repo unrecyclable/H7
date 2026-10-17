@@ -353,6 +353,137 @@ float x,y,z;
 
 
 
+//EventGroupHandle_t xEventGroup; 
+//EventGroupHandle_t xEventGroup1;
+//#define BIT_UART2_RX_DONE   (EventBits_t) 0x00000001  // ???0: ??1????
+//#define BIT_UART4_RX_DONE   (EventBits_t) 0x00000002  // ???1: ??2????
+//#define ALL_BITS            (BIT_UART2_RX_DONE | BIT_UART4_RX_DONE)
+//#define BIT_UART8_RX_DONE    0x04
+//int uart2itflag=0;
+//int uart4itflag=0;
+//	uint8_t sona2buffer[64];
+//	uint8_t sona4buffer[64];
+//uint8_t sona2datalen;
+//	uint8_t sona4datalen;
+//#define uart2_buffer_size 64
+//uint8_t uart2_rx_buffer[uart2_buffer_size]={0};
+//uint8_t u2=0;
+//float time2=0;
+//float time4=0;
+//void UART2_IT(void)
+//{
+//    // ????
+//    if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE))
+//    {
+//        __HAL_UART_CLEAR_IDLEFLAG(&huart2);
+//        // ? DMA,???
+//        HAL_UART_DMAStop(&huart2);
+//        volatile uint16_t len;
+//					len	= uart2_buffer_size- __HAL_DMA_GET_COUNTER(huart2.hdmarx);
+//			//if(uart2itflag==0)
+//				{
+//			//memcpy(sona2buffer, uart2_rx_buffer, len);
+//			//sona2datalen=len;
+//			time2=timer_getperiod();//sona_parse(sona2buffer,sona2datalen);
+//					//time2-=266800;
+//					time2-=185270;
+//					//if(time2>1000000)
+//						//time2=0;
+//					//if(time2<0)
+//						//time2=0;
+//					//printf("t2=%f\n",time2);
+//      sona2len=time2*1340*0.000001;
+//					u2=uart2_rx_buffer[4];
+//				//uart2itflag=1;
+//					
+//				}
+//				//if(len==7||len==8)
+////				char str[20];
+////				sprintf(str,"2\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			for(int i=0;i<8;i++)
+////			{
+////			sprintf(str,"%x,",uart2_rx_buffer[i]);
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			}
+////			sprintf(str,"\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+//			
+//			//float period=timer_getperiod();
+////			printf("2\n");
+////			for(int i=0;i<8;i++)
+////			{
+////			printf("%x,",uart2_rx_buffer[i]);
+////	
+////			}
+////      printf("\n");
+//    __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+//      HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer, uart2_buffer_size);
+//		//xEventGroupSetBitsFromISR(xEventGroup, BIT_UART2_RX_DONE, NULL);
+//		if(uart2itflag==0&&time2!=0)
+//			uart2itflag=1;
+//    }
+//}
+//#define uart4_buffer_size 64
+//uint8_t uart4_rx_buffer[uart4_buffer_size]={0};
+//uint8_t u4=0;
+//void UART4_IT(void)
+//{
+//    // ????
+//    if (__HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE))
+//    {
+//        __HAL_UART_CLEAR_IDLEFLAG(&huart4);
+//        // ? DMA,???
+//        HAL_UART_DMAStop(&huart4);
+//        //uint16_t len = uart4_buffer_size- __HAL_DMA_GET_COUNTER(huart4.hdmarx);
+//			
+//			//if(uart4itflag==0)
+//			{
+//			//memcpy(sona4buffer, uart4_rx_buffer, len);
+//				//sona4datalen=len;
+//			time4=timer_getperiod();//sona_parse(sona4buffer,sona4datalen);
+//				//time4-=439450;
+//				time4-=330650;
+//				//if(time4>1000000)
+//				//time4=0;
+//				//if(time4<0)
+//					//time4=0;
+//				//printf("t4=%f\n",time4);
+//				u4=uart4_rx_buffer[4];
+//      sona4len=time4*1340*0.000001;//-0.02+0.03+0.03;
+//			//uart4itflag=1;
+//				
+//			}
+////				char str[20];
+////				sprintf(str,"4\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			for(int i=0;i<8;i++)
+////			{
+////			sprintf(str,"%x,",uart4_rx_buffer[i]);
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+////			}
+////			sprintf(str,"\n");
+////		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
+//			
+////			printf("4\n");
+////			for(int i=0;i<8;i++)
+////			{
+////			printf("%x,",uart4_rx_buffer[i]);
+////	
+////			}
+////      printf("\n");
+//			//float time=0;
+//				//time=sona_parse(uart4_rx_buffer,len);
+//			    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+//			HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer, uart4_buffer_size);
+//			//xEventGroupSetBitsFromISR(xEventGroup, BIT_UART4_RX_DONE, NULL);
+//			if(uart4itflag==0&&time4!=0)
+//				uart4itflag=1;
+//    }
+//		
+//}
+
+
 EventGroupHandle_t xEventGroup; 
 EventGroupHandle_t xEventGroup1;
 #define BIT_UART2_RX_DONE   (EventBits_t) 0x00000001  // ???0: ??1????
@@ -380,49 +511,20 @@ void UART2_IT(void)
         HAL_UART_DMAStop(&huart2);
         volatile uint16_t len;
 					len	= uart2_buffer_size- __HAL_DMA_GET_COUNTER(huart2.hdmarx);
-			//if(uart2itflag==0)
+			if(uart2itflag==0)
 				{
-			//memcpy(sona2buffer, uart2_rx_buffer, len);
-			//sona2datalen=len;
-			time2=timer_getperiod();//sona_parse(sona2buffer,sona2datalen);
-					//time2-=266800;
-					time2-=185270;
-					//if(time2>1000000)
-						//time2=0;
-					//if(time2<0)
-						//time2=0;
-					//printf("t2=%f\n",time2);
-      sona2len=time2*1340*0.000001;
-					u2=uart2_rx_buffer[4];
-				//uart2itflag=1;
+			memcpy(sona2buffer, uart2_rx_buffer, len);
+			sona2datalen=len;
+		
+				uart2itflag=1;
 					
 				}
-				//if(len==7||len==8)
-//				char str[20];
-//				sprintf(str,"2\n");
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
-//			for(int i=0;i<8;i++)
-//			{
-//			sprintf(str,"%x,",uart2_rx_buffer[i]);
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
-//			}
-//			sprintf(str,"\n");
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
 			
-			//float period=timer_getperiod();
-//			printf("2\n");
-//			for(int i=0;i<8;i++)
-//			{
-//			printf("%x,",uart2_rx_buffer[i]);
-//	
-//			}
-//      printf("\n");
     __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
       HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer, uart2_buffer_size);
 		//xEventGroupSetBitsFromISR(xEventGroup, BIT_UART2_RX_DONE, NULL);
-		if(uart2itflag==0&&time2!=0)
-			uart2itflag=1;
-    }
+			}
+
 }
 #define uart4_buffer_size 64
 uint8_t uart4_rx_buffer[uart4_buffer_size]={0};
@@ -435,79 +537,24 @@ void UART4_IT(void)
         __HAL_UART_CLEAR_IDLEFLAG(&huart4);
         // ? DMA,???
         HAL_UART_DMAStop(&huart4);
-        //uint16_t len = uart4_buffer_size- __HAL_DMA_GET_COUNTER(huart4.hdmarx);
+        uint16_t len = uart4_buffer_size- __HAL_DMA_GET_COUNTER(huart4.hdmarx);
 			
-			//if(uart4itflag==0)
+			if(uart4itflag==0)
 			{
-			//memcpy(sona4buffer, uart4_rx_buffer, len);
-				//sona4datalen=len;
-			time4=timer_getperiod();//sona_parse(sona4buffer,sona4datalen);
-				//time4-=439450;
-				time4-=330650;
-				//if(time4>1000000)
-				//time4=0;
-				//if(time4<0)
-					//time4=0;
-				//printf("t4=%f\n",time4);
-				u4=uart4_rx_buffer[4];
-      sona4len=time4*1340*0.000001;//-0.02+0.03+0.03;
-			//uart4itflag=1;
+			memcpy(sona4buffer, uart4_rx_buffer, len);
+				sona4datalen=len;
+	
+			uart4itflag=1;
 				
 			}
-//				char str[20];
-//				sprintf(str,"4\n");
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
-//			for(int i=0;i<8;i++)
-//			{
-//			sprintf(str,"%x,",uart4_rx_buffer[i]);
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
-//			}
-//			sprintf(str,"\n");
-//		HAL_UART_Transmit(&huart8,(uint8_t*)str,strlen(str),0xff);
-			
-//			printf("4\n");
-//			for(int i=0;i<8;i++)
-//			{
-//			printf("%x,",uart4_rx_buffer[i]);
-//	
-//			}
-//      printf("\n");
-			//float time=0;
-				//time=sona_parse(uart4_rx_buffer,len);
+
 			    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
 			HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer, uart4_buffer_size);
 			//xEventGroupSetBitsFromISR(xEventGroup, BIT_UART4_RX_DONE, NULL);
-			if(uart4itflag==0&&time4!=0)
-				uart4itflag=1;
+			
     }
 		
 }
-//calibation
-//void sona_task()	
-//{
-
-//	
-//		HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer,uart4_buffer_size);
-//    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
-//		HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer,uart2_buffer_size);
-//    __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
-//	timer_start();
-//	
-//	while(1)
-//	{
-//uint8_t pack[8]={0x02,0x6a,0x07,0x01,0xff,0x3f,0xb2};
-//if(time4!=0||time2!=0)
-//	//printf("time:2=%f,4=%f\n",time2,time4);
-//	time2=0;time4=0;
-//	HAL_UART_Transmit(&huart2,pack,7,0xff);
-//	timer=0;
-//vTaskDelay(pdMS_TO_TICKS(1000));
-//HAL_UART_Transmit(&huart4,pack,7,0xff);
-//timer=0;
-//vTaskDelay(pdMS_TO_TICKS(1000));	
-
-//	}
-//}
 
 //void sona_task()	
 //{
@@ -708,7 +755,109 @@ void UART4_IT(void)
 //}
 
 
-//latest
+//distance latest
+//void sona_task()	
+//{
+//	can_init();
+//	xEventGroup = xEventGroupCreate();
+//		HAL_UART_Receive_DMA(&huart4, uart4_rx_buffer,uart4_buffer_size);
+//    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+//		HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer,uart2_buffer_size);
+//    __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+//	uint8_t set_pack[8]={0xff,0x06,0x02,0x3c,0x00,0x04,0x5c,0x63};
+//	HAL_UART_Transmit(&huart2,set_pack,8,0xff);
+//	HAL_UART_Transmit(&huart4,set_pack,8,0xff);
+//	timer_start();
+//	uint8_t data[8]={0xfa};
+//	while(1)
+//	{
+
+////if(time4!=0||time2!=0)
+//	//printf("time:2=%f,4=%f\n",time2,time4);
+//	time2=0;time4=0;
+//can_send(0x01,data,8);//new
+//	timer=0;
+//		//uint8_t pack[7]={0x02,0x6a,0x07,0x01,0xff,0x3f,0xb2};
+//		//HAL_UART_Transmit(&huart2,pack,7,0xff);
+//		//printf("working\n");
+//vTaskDelay(pdMS_TO_TICKS(1000));
+////EventBits_t uxReturnedBits;
+////	uxReturnedBits = xEventGroupWaitBits(
+////            xEventGroup,            // ???????
+////            BIT_UART2_RX_DONE,               // ???????
+////            pdTRUE,                 // ????????????
+////            pdFALSE,                 // ????????? (???)
+////            pdMS_TO_TICKS(1500)           // ?????,??????
+////        );
+////EventBits_t uxReturnedBits1;
+//can_send(0x02,data,8);
+//timer=0;
+//		//HAL_UART_Transmit(&huart4,pack,7,0xff);
+//vTaskDelay(pdMS_TO_TICKS(1000));
+////	uxReturnedBits1 = xEventGroupWaitBits(
+////            xEventGroup,            // ???????
+////            BIT_UART4_RX_DONE,               // ???????
+////            pdTRUE,                 // ????????????
+////            pdFALSE,                 // ????????? (???)
+////            pdMS_TO_TICKS(3000)           // ?????,??????
+////        );
+//		
+//		//if((uxReturnedBits&BIT_UART2_RX_DONE)&&(uxReturnedBits1&BIT_UART4_RX_DONE))
+////		{
+////			//calc_pos(sona2len,sona4len,0/180*M_PI);	
+////			printf("get\n");q	
+
+//if(uart2itflag==1&&uart4itflag==1)
+//{	
+////printf("2=%f,4=%f\n",time2,time4);
+////printf("2=%f\n",sona2len);
+////printf("4=%f\n",sona4len);
+//	calc_pos(sona2len,sona4len,0/180*M_PI);
+//	printf("pos=%f,%f,%f\n",pos_x,pos_y,pos_z);
+//}
+
+////			uart2itflag=0;
+////			uart4itflag=0;
+
+//			//printf("%f,%f,%f\n",pos_x,pos_y,pos_z);
+////		}
+
+//if(uart2itflag==1)
+//	//printf("2:%f\n",time2);
+//	printf("2=%f\n",sona2len);
+//if(uart4itflag==1)
+//	//printf("4:%f\n",time4);
+//	printf("4=%f\n",sona4len);
+//uart2itflag=0;
+//uart4itflag=0;
+////printf("2=%x,4=%x\n",u2,u4);
+//	}
+//}
+
+
+
+int control_bits=0;
+int sona_cableless_flag=0;
+void cableless_parse(uint8_t*data,int len)
+{
+	int p=0;
+	char ch=0;
+for(;p<len;p++)
+{
+	
+if(data[p]==0x02)
+{
+if(data[p+1]==0x8b)
+{
+	control_bits=data[p+4];
+	sona_cableless_flag=1;
+	break;
+}
+}
+
+}
+}
+//cableless control latest
 void sona_task()	
 {
 	can_init();
@@ -717,76 +866,37 @@ void sona_task()
     __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
 		HAL_UART_Receive_DMA(&huart2, uart2_rx_buffer,uart2_buffer_size);
     __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
-	uint8_t set_pack[8]={0xff,0x06,0x02,0x3c,0x00,0x04,0x5c,0x63};
+	uint8_t set_pack[8]={0xff,0x06,0x02,0x3c,0x00,0x08,0x5c,0x66};
+	//	uint8_t set_pack[8]={0xff,0x06,0x02,0x3c,0x00,0x04,0x5c,0x63};
 	HAL_UART_Transmit(&huart2,set_pack,8,0xff);
 	HAL_UART_Transmit(&huart4,set_pack,8,0xff);
 	timer_start();
-	uint8_t data[8]={0xfa};
+
 	while(1)
 	{
 
-//if(time4!=0||time2!=0)
-	//printf("time:2=%f,4=%f\n",time2,time4);
-	time2=0;time4=0;
-can_send(0x01,data,8);//new
-	timer=0;
-		//uint8_t pack[7]={0x02,0x6a,0x07,0x01,0xff,0x3f,0xb2};
-		//HAL_UART_Transmit(&huart2,pack,7,0xff);
-		//printf("working\n");
-vTaskDelay(pdMS_TO_TICKS(1000));
-//EventBits_t uxReturnedBits;
-//	uxReturnedBits = xEventGroupWaitBits(
-//            xEventGroup,            // ???????
-//            BIT_UART2_RX_DONE,               // ???????
-//            pdTRUE,                 // ????????????
-//            pdFALSE,                 // ????????? (???)
-//            pdMS_TO_TICKS(1500)           // ?????,??????
-//        );
-//EventBits_t uxReturnedBits1;
-can_send(0x02,data,8);
-timer=0;
-		//HAL_UART_Transmit(&huart4,pack,7,0xff);
-vTaskDelay(pdMS_TO_TICKS(1000));
-//	uxReturnedBits1 = xEventGroupWaitBits(
-//            xEventGroup,            // ???????
-//            BIT_UART4_RX_DONE,               // ???????
-//            pdTRUE,                 // ????????????
-//            pdFALSE,                 // ????????? (???)
-//            pdMS_TO_TICKS(3000)           // ?????,??????
-//        );
-		
-		//if((uxReturnedBits&BIT_UART2_RX_DONE)&&(uxReturnedBits1&BIT_UART4_RX_DONE))
-//		{
-//			//calc_pos(sona2len,sona4len,0/180*M_PI);	
-//			printf("get\n");q	
-
-if(uart2itflag==1&&uart4itflag==1)
-{	
-//printf("2=%f,4=%f\n",time2,time4);
-//printf("2=%f\n",sona2len);
-//printf("4=%f\n",sona4len);
-	calc_pos(sona2len,sona4len,0/180*M_PI);
-	printf("pos=%f,%f,%f\n",pos_x,pos_y,pos_z);
-}
-
-//			uart2itflag=0;
-//			uart4itflag=0;
-
-			//printf("%f,%f,%f\n",pos_x,pos_y,pos_z);
-//		}
 
 if(uart2itflag==1)
-	//printf("2:%f\n",time2);
-	printf("2=%f\n",sona2len);
+	
+{
+	cableless_parse(sona2buffer,sona2datalen);
+	printf("2\n");
+	
+	
+}
 if(uart4itflag==1)
-	//printf("4:%f\n",time4);
-	printf("4=%f\n",sona4len);
+	
+{
+	cableless_parse(sona4buffer,sona4datalen);
+	printf("4\n");
+}
 uart2itflag=0;
 uart4itflag=0;
 //printf("2=%x,4=%x\n",u2,u4);
-	}
+	//cableless_parse(sona2buffer,sona2datalen);
+vTaskDelay(pdMS_TO_TICKS(100));
 }
-
+}
 
 //extern TaskHandle_t xTaskToNotify;
 //void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)

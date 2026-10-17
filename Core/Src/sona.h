@@ -9,3 +9,5 @@ extern float pos_x,pos_y,pos_z;
 void sona_send(UART_HandleTypeDef*huart);
 void sona_task();
 extern EventGroupHandle_t xEventGroup1;
+extern int control_bits;
+extern int sona_cableless_flag;

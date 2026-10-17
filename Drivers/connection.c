@@ -93,6 +93,8 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			memcpy(p+8*2,can_rx_buffer,8);		
 		else if(rx.Identifier==0x403)
 			memcpy(p+8*3,can_rx_buffer,8);
+		else if(rx.Identifier==0x404)
+			memcpy(p+8*4,can_rx_buffer,8);
 		can_flag=1;
 	}
 	//printf("%d,%f,%f,%f,%f\n",con.arm,con.stick_lx,con.stick_ly,con.stick_rx,con.stick_ry);
@@ -123,4 +125,20 @@ void can_send(int id,uint8_t*data,int len)
 			{
 				//Error_Handler();
 			}
+}
+void can_send_long(uint16_t id,uint8_t*data,int len)
+{
+	uint8_t end[8]={0xfd};
+	int count=len/8;
+	int remain=len%8;
+	uint8_t* p=data;
+	int i=0;
+	for(;i<count;i++)
+		{
+			can_send(id+i,p,8);
+			p+=8;
+		}
+		if(remain!=0)
+		{can_send(id+i,p,remain);
+		i++;}
 }

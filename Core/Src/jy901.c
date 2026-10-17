@@ -5,6 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "ms5837_uart.h"
+#include "connection.h"
 float accx, accy, accz, angx, angy, angz, magx, magy, magz;
 float roll, pitch, yaw, temperature_jy901p;
 float roll_last, pitch_last, yaw_last;
@@ -321,7 +322,7 @@ float roll;
 	float yaw;
 }jy901_att;
 jy901_att att={.head=0xfd};
-
+int te=0;
 void jy901_task()
 {
 	//JY901_UART_Init();
@@ -372,7 +373,7 @@ void jy901_task()
 			oaccx=accx;
 			oaccy=accy;
 			oaccz=accz;
-			roll+=6.24;
+			//roll+=6.24;
 			pitch+=8.17;
 			if(fabs(roll)<1)
 			{roll=0;}
@@ -397,18 +398,22 @@ void jy901_task()
 //				count=0;
 //			}
 				uart6_it_flag=0;
-if(count>=100)
+if(count>=20)
 {
 	att.roll=roll;
 	att.pitch=pitch;
 	att.yaw=yaw;
 	//HAL_UART_Transmit(&huart8,(uint8_t*)&att,sizeof(jy901_att),0xff);
+	//printf("r=%f,p=%f,y=%f\n,d=%f\n",att.roll,att.pitch,att.yaw,ms5837_depth);
+	//can_send_long(0x300,(uint8_t*)&att,sizeof(jy901_att));
+	//printf("%d\n",te);
+	//te++;
 	count=0;
 }
 		}
 		//intergrate+=accx;
 		//printf("int=%f\n",intergrate);
-		//printf("%f,%f,%f,%f,%f,%f,%f,%f,%f\n",accx,accy,accz,angx,angy,angz,roll,pitch,yaw);
+//		printf("%f,%f,%f,%f,%f,%f,%f,%f,%f\n",accx,accy,accz,angx,angy,angz,roll,pitch,yaw);
 //		char str[100];
 //			sprintf(str,"roll=%f\n",roll);
 //			HAL_UART_Transmit(&huart1,(uint8_t*)str,strlen(str),100);
